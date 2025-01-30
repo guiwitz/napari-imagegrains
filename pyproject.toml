@@ -29,6 +29,8 @@ dependencies = [
     "magicgui",
     "qtpy",
     "scikit-image",
+    "imagegrains",
+    "cellpose"
 ]
 
 [project.optional-dependencies]
