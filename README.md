@@ -7,7 +7,7 @@
 [![codecov](https://codecov.io/gh/guiwitz/napari-imagegrains/branch/main/graph/badge.svg)](https://codecov.io/gh/guiwitz/napari-imagegrains)
 [![napari hub](https://img.shields.io/endpoint?url=https://api.napari-hub.org/shields/napari-imagegrains)](https://napari-hub.org/plugins/napari-imagegrains)
 
-An interactive napari plugin for the ImageGrains software.
+An interactive napari plugin for the [ImageGrains](https://github.com/dmair1989/imagegrains) software.
 
 ----------------------------------
 
@@ -47,6 +47,15 @@ Distributed under the terms of the [BSD-3] license,
 ## Issues
 
 If you encounter any problems, please [file an issue] along with a detailed description.
+
+## Authors
+
+The original software ImageGrain was developed by David Mair, Institute of Geological Sciences, University of Bern. The current plugin, a user-interface for the ImageGrains software, was developed by Guillaume Witz and Michael Horn, Data Science Lab, University of Bern in collaboration with David Mair.
+
+## Citation
+
+If you use this software, please cite the following publication: Mair, D., Witz, G., Do Prado, A.H., Garefalakis, P. & Schlunegger, F. (2023) Automated detecting, segmenting and measuring of grains in images of fluvial sediments: The potential for large and precise data from specialist deep learning models and transfer learning. Earth Surface Processes and Landforms, 1–18. <https://doi.org/10.1002/esp.5755>.
+
 
 [napari]: https://github.com/napari/napari
 [copier]: https://copier.readthedocs.io/en/stable/
