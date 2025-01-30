@@ -1,6 +1,6 @@
 import numpy as np
 
-from napari_imagegrains._widget import (
+from napari_imagegrains.imagegrains_widget import (
     ExampleQWidget,
     ImageThreshold,
     threshold_autogenerate_widget,
