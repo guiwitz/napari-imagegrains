@@ -1,7 +1,7 @@
 import numpy as np
 
-from napari_imagegrains.imagegrains_widget import (
-    ImageGrainWidget,
+from napari_imagegrains.imgr_proc_widget import (
+    ImageGrainProcWidget,
 )
 
 
@@ -12,7 +12,7 @@ def test_example_q_widget(make_napari_viewer, capsys):
     viewer.add_image(np.random.random((100, 100)))
 
     # create our widget, passing in the viewer
-    my_widget = ImageGrainWidget(viewer)
+    my_widget = ImageGrainProcWidget(viewer)
 
     # call our widget method
     my_widget._on_click()

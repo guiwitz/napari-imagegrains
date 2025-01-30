@@ -6,10 +6,12 @@ except ImportError:
 
 from ._reader import napari_get_reader
 from ._sample_data import make_sample_data
-from .imagegrains_widget import ImageGrainWidget
+from .imgr_proc_widget import ImageGrainProcWidget
+from .imgr_stats_widget import ImageGrainStatsWidget
 
 __all__ = (
     "napari_get_reader",
     "make_sample_data",
-    "ImageGrainWidget",
+    "ImageGrainProcWidget",
+    "ImageGrainStatsWidget",
 )

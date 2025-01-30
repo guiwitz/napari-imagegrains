@@ -12,9 +12,12 @@ contributions:
     - id: napari-imagegrains.make_sample_data
       python_name: napari_imagegrains._sample_data:make_sample_data
       title: Load sample data from ImageGrains
-    - id: napari-imagegrains.make_qwidget
-      python_name: napari_imagegrains:ImageGrainWidget
+    - id: napari-imagegrains.make_proc_qwidget
+      python_name: napari_imagegrains:ImageGrainProcWidget
       title: Make ImageGrain QWidget
+    - id: napari-imagegrains.make_stats_qwidget
+      python_name: napari_imagegrains:ImageGrainStatsWidget
+      title: Make ImageGrainStats QWidget
   readers:
     - command: napari-imagegrains.get_reader
       accepts_directories: false
@@ -24,5 +27,7 @@ contributions:
       display_name: ImageGrains
       key: unique_id.1
   widgets:
-    - command: napari-imagegrains.make_qwidget
-      display_name: ImageGrain QWidget
+    - command: napari-imagegrains.make_proc_qwidget
+      display_name: ImageGrainProc QWidget
+    - command: napari-imagegrains.make_stats_qwidget
+      display_name: ImageGrainStats QWidget
