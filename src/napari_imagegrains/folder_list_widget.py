@@ -51,7 +51,7 @@ class FolderList(QListWidget):
         files = os.listdir(self.folder_path)
         files = natsorted(files)
         for f in files:
-            if (f[0] != '.') and (self.folder_path.joinpath(f).is_file()) and (Path(f).suffix in ['.png', '.tif', '.tiff']):
+            if (f[0] != '.') and (self.folder_path.joinpath(f).is_file()) and (Path(f).suffix in ['.png', '.jpg','.tif', '.tiff', '.170223']):
                 self.addItem(f)
     
     def addFileEvent(self):
