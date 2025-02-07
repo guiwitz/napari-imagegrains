@@ -8,6 +8,7 @@ from pathlib import Path
 from qtpy.QtWidgets import QVBoxLayout, QPushButton, QWidget, QFileDialog
 
 from .folder_list_widget import FolderList
+from .access_single_image_widget import predict_single_image
 
 from imagegrains import data_loader, segmentation_helper, plotting
 from cellpose import models
@@ -76,13 +77,17 @@ class ImageGrainProcWidget(QWidget):
         """
         Segment image. In development...
         """
-
-        image_path = self.image_folder
         model_path = self.model_path
 
         model = models.CellposeModel(gpu=False, pretrained_model=str(model_path))
 
-        self.mask_l, self.flow_l, self.styles_l, self.id_list, self.img_l = segmentation_helper.predict_folder(image_path,model,mute=True,return_results=True,save_masks=True, tar_dir="masks/", model_id='fh_boosted_1')
+        # image folder
+        #image_path = self.image_folder
+        #self.mask_l, self.flow_l, self.styles_l, self.id_list, self.img_l = segmentation_helper.predict_folder(image_path,model,mute=True,return_results=True,save_masks=True, tar_dir="masks/", model_id='fh_boosted_1')
+
+        # single image:
+        image_path = self.image_path
+        self.mask_l, self.flow_l, self.styles_l, self.id_list, self.img_l = predict_single_image(image_path,model,mute=True,return_results=True,save_masks=True, tar_dir="masks/", model_id='fh_boosted_1')
 
 
         self.viewer.add_labels(self.mask_l[0], name=f"segmented_{self.image_name}")
@@ -114,8 +119,8 @@ class ImageGrainProcWidget(QWidget):
     def open_image(self):
 
         # clear existing layers.
-        # while len(self.viewer.layers) > 0:
-        #     self.viewer.layers.clear()
+        while len(self.viewer.layers) > 0:
+             self.viewer.layers.clear()
 
         # if file list is empty stop here
         if self.image_list.currentItem() is None:
