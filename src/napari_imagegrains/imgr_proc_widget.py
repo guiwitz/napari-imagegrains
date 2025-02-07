@@ -1,10 +1,23 @@
+import os
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
+
+
 from typing import TYPE_CHECKING
 from pathlib import Path
 
 from qtpy.QtWidgets import QVBoxLayout, QPushButton, QWidget, QFileDialog
 
 from .folder_list_widget import FolderList
-from .segment_image_widget import SegmentationWidget
+
+from imagegrains import data_loader, segmentation_helper, plotting
+from cellpose import models
+import matplotlib.pyplot as plt
+
+import warnings
+warnings.filterwarnings("ignore")
+
+
+
 
 if TYPE_CHECKING:
     import napari
@@ -44,9 +57,11 @@ class ImageGrainProcWidget(QWidget):
     def _on_click_select_image_folder(self):
         """Interactively select folder to analyze"""
 
-        image_folder = Path(str(QFileDialog.getExistingDirectory(self, "Select Directory")))
-        self.image_list.update_from_path(image_folder)
+        self.image_folder = Path(str(QFileDialog.getExistingDirectory(self, "Select Directory")))
+        self.image_list.update_from_path(self.image_folder)
         self.reset_channels = True
+
+        return self.image_folder
     
 
     def _on_click_select_model_folder(self):
@@ -61,14 +76,17 @@ class ImageGrainProcWidget(QWidget):
         """
         Segment image. In development...
         """
-        try:
-            self.segmentation_widget = SegmentationWidget(self.image_path)
-            self.segmented = self.segmentation_widget.gray_image()
-            # while len(self.viewer.layers) > 1:
-            #     self.viewer.layers.clear()
-            self.viewer.add_image(self.segmented, name=f"segmented_{self.image_name}")
-        except:
-            pass
+
+        image_path = self.image_folder
+        model_path = self.model_path
+
+        model = models.CellposeModel(gpu=False, pretrained_model=str(model_path))
+
+        self.mask_l, self.flow_l, self.styles_l, self.id_list, self.img_l = segmentation_helper.predict_folder(image_path,model,mute=True,return_results=True,save_masks=True, tar_dir="masks/", model_id='fh_boosted_1')
+
+
+        self.viewer.add_labels(self.mask_l[0], name=f"segmented_{self.image_name}")
+
 
 
     def _on_select_image(self, current_item, previous_item):
@@ -80,17 +98,24 @@ class ImageGrainProcWidget(QWidget):
             return self.image_path
     
     def _on_select_model(self, current_item, previous_item):
-        
-        success = print("Model was selected")
-        if not success:
+
+        # if file list is empty stop here
+        if self.model_list.currentItem() is None:
             return False
+        
+        # extract model path
+        self.model_name = self.model_list.currentItem().text()
+        self.model_path = self.model_list.folder_path.joinpath(self.model_name)
+        print(self.model_path)
+        
+        return self.model_path
         
 
     def open_image(self):
 
         # clear existing layers.
-        while len(self.viewer.layers) > 0:
-            self.viewer.layers.clear()
+        # while len(self.viewer.layers) > 0:
+        #     self.viewer.layers.clear()
 
         # if file list is empty stop here
         if self.image_list.currentItem() is None:
