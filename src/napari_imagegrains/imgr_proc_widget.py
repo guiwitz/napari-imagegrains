@@ -7,15 +7,15 @@ from pathlib import Path
 
 from qtpy.QtWidgets import QVBoxLayout, QTabWidget, QPushButton, QWidget, QFileDialog,  QLineEdit, QGroupBox, QHBoxLayout, QGridLayout, QLabel, QCheckBox, QProgressBar
 
-from qtpy.QtCore import QThread, Signal
-import time
+#from qtpy.QtCore import QThread, Signal
+#import time
 
 from .folder_list_widget import FolderList
 from .access_single_image_widget import predict_single_image
 
-from imagegrains import data_loader, segmentation_helper, plotting
+#from imagegrains import data_loader, segmentation_helper, plotting
 from cellpose import models
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 
 import warnings
 warnings.filterwarnings("ignore")
@@ -121,7 +121,8 @@ class ImageGrainProcWidget(QWidget):
         self.btn_run_segmentation_on_folder.setToolTip("Run segmentation on entire folder")
         self.run_segmentation_group.glayout.addWidget(self.btn_run_segmentation_on_folder)
 
-
+        self.lbl_segmentation_progress = QLabel("Segmentation progress on image folder")
+        self.run_segmentation_group.glayout.addWidget(self.lbl_segmentation_progress)
         self.progress_bar = QProgressBar()
         self.progress_bar.setValue(0)
         self.run_segmentation_group.glayout.addWidget(self.progress_bar)
@@ -216,19 +217,18 @@ class ImageGrainProcWidget(QWidget):
         self.mask_l, self.flow_l, self.styles_l, self.id_list, self.img_l = predict_single_image(image_path, model, mute=True, return_results=True, save_masks=SAVE_MASKS, tar_dir=TAR_DIR, model_id=MODEL_ID)
 
         self.viewer.add_labels(self.mask_l[0], name=f"{img_id}_{MODEL_ID}_pred")
-
+    
 
     def _on_click_segment_image_folder(self):
         """
-        Segment all images in selected folder. In development...
+        Segment image. In development...
         """
-
         model_path = self.model_path
 
         model = models.CellposeModel(gpu=False, pretrained_model=str(model_path))
 
-        # image folder
-        image_path = self.image_folder
+        # single image:
+        path_images_in_folder = self.image_folder
 
         if self.local_directory_mask_path_display.text() == "No local path":
             SAVE_MASKS = False
@@ -244,14 +244,49 @@ class ImageGrainProcWidget(QWidget):
                 TAR_DIR = Path(self.local_directory_mask_path_display.text())
                 MODEL_ID = Path(self.model_name).stem
 
-        self.mask_l, self.flow_l, self.styles_l, self.id_list, self.img_l = segmentation_helper.predict_folder(image_path, model, mute=True, return_results=True, save_masks=SAVE_MASKS, tar_dir=TAR_DIR, model_id=MODEL_ID)
+        img_list = [x for x in os.listdir(path_images_in_folder) if x.endswith(".jpg")]
 
-        #self.mask_l.connect(self.progress_bar.setValue)  # Update progress
+        for idx, img in enumerate(img_list):
+            self.mask_l, self.flow_l, self.styles_l, self.id_list, self.img_l = predict_single_image(path_images_in_folder.joinpath(img), model, mute=True, return_results=True, save_masks=SAVE_MASKS, tar_dir=TAR_DIR, model_id=MODEL_ID)
+            self.viewer.open(path_images_in_folder.joinpath(img))
+            self.viewer.add_labels(self.mask_l, name=f"{img}_{MODEL_ID}_pred")
+            self.progress_bar.setValue(int((idx + 1) / len(img_list) * 100))
 
-        for idx, _ in enumerate(self.mask_l):
+        self.progress_bar.setValue(100)  # Ensure it's fully completed
+
+
+    # def _on_click_segment_image_folder_via_API(self):
+    #     """
+    #     Segment all images in selected folder. In development...
+    #     """
+
+    #     model_path = self.model_path
+
+    #     model = models.CellposeModel(gpu=False, pretrained_model=str(model_path))
+
+    #     # image folder
+    #     image_path = self.image_folder
+
+    #     if self.local_directory_mask_path_display.text() == "No local path":
+    #         SAVE_MASKS = False
+    #         TAR_DIR = ""
+    #         MODEL_ID = Path(self.model_name).stem
+    #     else:
+    #         if not self.check_save_mask.isChecked():
+    #             SAVE_MASKS = False
+    #             TAR_DIR = ""
+    #             MODEL_ID = Path(self.model_name).stem
+    #         else:
+    #             SAVE_MASKS = True
+    #             TAR_DIR = Path(self.local_directory_mask_path_display.text())
+    #             MODEL_ID = Path(self.model_name).stem
+
+    #     self.mask_l, self.flow_l, self.styles_l, self.id_list, self.img_l = segmentation_helper.predict_folder(image_path, model, mute=True, return_results=True, save_masks=SAVE_MASKS, tar_dir=TAR_DIR, model_id=MODEL_ID)
+
+    #     for idx, _ in enumerate(self.mask_l):
             
-            self.viewer.open(self.img_l[idx])
-            self.viewer.add_labels(self.mask_l[idx], name=f"{image_path}_{MODEL_ID}_pred")
+    #         self.viewer.open(self.img_l[idx])
+    #         self.viewer.add_labels(self.mask_l[idx], name=f"{image_path}_{MODEL_ID}_pred")
 
 
     def _on_select_image(self, current_item, previous_item):
