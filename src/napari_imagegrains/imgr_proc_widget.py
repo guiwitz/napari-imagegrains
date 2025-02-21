@@ -5,7 +5,10 @@ os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 from typing import TYPE_CHECKING
 from pathlib import Path
 
-from qtpy.QtWidgets import QVBoxLayout, QTabWidget, QPushButton, QWidget, QFileDialog,  QLineEdit, QGroupBox, QHBoxLayout, QGridLayout, QLabel, QCheckBox
+from qtpy.QtWidgets import QVBoxLayout, QTabWidget, QPushButton, QWidget, QFileDialog,  QLineEdit, QGroupBox, QHBoxLayout, QGridLayout, QLabel, QCheckBox, QProgressBar
+
+from qtpy.QtCore import QThread, Signal
+import time
 
 from .folder_list_widget import FolderList
 from .access_single_image_widget import predict_single_image
@@ -96,10 +99,10 @@ class ImageGrainProcWidget(QWidget):
 
         self.check_use_gpu = QCheckBox('Use GPU')
         self.segmentation_option_group.glayout.addWidget(self.check_use_gpu, 0, 0, 1, 1)
-        self.check_return_results = QCheckBox('Return results')
-        self.segmentation_option_group.glayout.addWidget(self.check_return_results, 0, 1, 1, 1)
+        #self.check_return_results = QCheckBox('Return results')
+        #self.segmentation_option_group.glayout.addWidget(self.check_return_results, 0, 1, 1, 1)
         self.check_save_mask = QCheckBox('Save mask(s)')
-        self.segmentation_option_group.glayout.addWidget(self.check_save_mask, 0, 2, 1, 1)
+        self.segmentation_option_group.glayout.addWidget(self.check_save_mask, 0, 1, 1, 1)
         self.lbl_mask_directory = QLabel("Mask directory")
         self.segmentation_option_group.glayout.addWidget(self.lbl_mask_directory, 1, 0, 1, 1)
         self.local_directory_mask_path_display = QLineEdit("No local path")
@@ -117,6 +120,11 @@ class ImageGrainProcWidget(QWidget):
         self.btn_run_segmentation_on_folder = QPushButton("Run on folder")
         self.btn_run_segmentation_on_folder.setToolTip("Run segmentation on entire folder")
         self.run_segmentation_group.glayout.addWidget(self.btn_run_segmentation_on_folder)
+
+
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setValue(0)
+        self.run_segmentation_group.glayout.addWidget(self.progress_bar)
 
 
         # performance tab
@@ -137,6 +145,7 @@ class ImageGrainProcWidget(QWidget):
         self.btn_select_image_folder.clicked.connect(self._on_click_select_image_folder)
         self.btn_select_model_folder.clicked.connect(self._on_click_select_model_folder)
         self.btn_run_segmentation_on_single_image.clicked.connect(self._on_click_segment_single_image)
+        self.btn_run_segmentation_on_folder.clicked.connect(self._on_click_segment_image_folder)
 
     
     def _on_click_download_model(self):
@@ -156,7 +165,6 @@ class ImageGrainProcWidget(QWidget):
         assert type(content_in_bytes) is bytes
         with open(str(Path(self.model_save_path).joinpath(self.model_name)), 'wb') as f_out:
              f_out.write(content_in_bytes)
-
 
 
     def _on_click_select_image_folder(self):
@@ -185,10 +193,6 @@ class ImageGrainProcWidget(QWidget):
 
         model = models.CellposeModel(gpu=False, pretrained_model=str(model_path))
 
-        # image folder
-        #image_path = self.image_folder
-        #self.mask_l, self.flow_l, self.styles_l, self.id_list, self.img_l = segmentation_helper.predict_folder(image_path,model,mute=True,return_results=True,save_masks=True, tar_dir="masks/", model_id='fh_boosted_1')
-
         # single image:
         image_path = self.image_path
 
@@ -212,7 +216,43 @@ class ImageGrainProcWidget(QWidget):
         self.mask_l, self.flow_l, self.styles_l, self.id_list, self.img_l = predict_single_image(image_path, model, mute=True, return_results=True, save_masks=SAVE_MASKS, tar_dir=TAR_DIR, model_id=MODEL_ID)
 
         self.viewer.add_labels(self.mask_l[0], name=f"{img_id}_{MODEL_ID}_pred")
-    
+
+
+    def _on_click_segment_image_folder(self):
+        """
+        Segment all images in selected folder. In development...
+        """
+
+        model_path = self.model_path
+
+        model = models.CellposeModel(gpu=False, pretrained_model=str(model_path))
+
+        # image folder
+        image_path = self.image_folder
+
+        if self.local_directory_mask_path_display.text() == "No local path":
+            SAVE_MASKS = False
+            TAR_DIR = ""
+            MODEL_ID = Path(self.model_name).stem
+        else:
+            if not self.check_save_mask.isChecked():
+                SAVE_MASKS = False
+                TAR_DIR = ""
+                MODEL_ID = Path(self.model_name).stem
+            else:
+                SAVE_MASKS = True
+                TAR_DIR = Path(self.local_directory_mask_path_display.text())
+                MODEL_ID = Path(self.model_name).stem
+
+        self.mask_l, self.flow_l, self.styles_l, self.id_list, self.img_l = segmentation_helper.predict_folder(image_path, model, mute=True, return_results=True, save_masks=SAVE_MASKS, tar_dir=TAR_DIR, model_id=MODEL_ID)
+
+        #self.mask_l.connect(self.progress_bar.setValue)  # Update progress
+
+        for idx, _ in enumerate(self.mask_l):
+            
+            self.viewer.open(self.img_l[idx])
+            self.viewer.add_labels(self.mask_l[idx], name=f"{image_path}_{MODEL_ID}_pred")
+
 
     def _on_select_image(self, current_item, previous_item):
         
@@ -222,6 +262,7 @@ class ImageGrainProcWidget(QWidget):
         else:
             return self.image_path
     
+
     def _on_select_model(self, current_item, previous_item):
 
         # if file list is empty stop here
@@ -276,3 +317,6 @@ class VHGroup():
             raise Exception(f"Unknown orientation {orientation}") 
 
         self.gbox.setLayout(self.glayout)
+
+
+
