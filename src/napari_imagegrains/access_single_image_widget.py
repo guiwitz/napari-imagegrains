@@ -8,7 +8,6 @@ from tqdm import tqdm
 from glob import glob
 from natsort import natsorted
 from skimage.measure import label, regionprops_table
-from tifffile import imsave
 
 from cellpose import metrics, models, io
 from imagegrains import grainsizing, data_loader, plotting
