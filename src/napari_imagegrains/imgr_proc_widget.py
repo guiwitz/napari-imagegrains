@@ -244,7 +244,7 @@ class ImageGrainProcWidget(QWidget):
 
     def _on_click_segment_image_folder(self):
         """
-        Segment image. In development...
+        Segment image folder. In development...
         """
         model_path = self.model_path
 
@@ -272,7 +272,7 @@ class ImageGrainProcWidget(QWidget):
         for idx, img in enumerate(img_list):
             self.mask_l, self.flow_l, self.styles_l, self.id_list, self.img_l = predict_single_image(path_images_in_folder.joinpath(img), model, mute=True, return_results=True, save_masks=SAVE_MASKS, tar_dir=TAR_DIR, model_id=MODEL_ID)
             self.viewer.open(path_images_in_folder.joinpath(img))
-            self.viewer.add_labels(self.mask_l, name=f"{img}_{MODEL_ID}_pred")
+            self.viewer.add_labels(self.mask_l, name=f"{img[:-4]}_{MODEL_ID}_pred")
             self.progress_bar.setValue(int((idx + 1) / len(img_list) * 100))
 
         self.progress_bar.setValue(100)  # Ensure it's fully completed
