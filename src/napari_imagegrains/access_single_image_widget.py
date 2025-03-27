@@ -15,6 +15,10 @@ from imagegrains import grainsizing, data_loader, plotting
 
 
 def predict_single_image(image_path,model,image_format='jpg',filter_str='',channels=[0,0],diameter=None,min_size=15,rescale=None,config=None,tar_dir='',return_results=False,save_masks=True,mute=False,model_id=''):
+    '''
+    Generates a segmentation mask for an individual image and offers the option to save this mask as a .tif-file.
+    Code is adapted from segmentation_helper.predict_folder.
+    '''
 
     image_path = str(Path(image_path).as_posix()) #ensure that Path is a string for cellpose classes
     mask_l,flow_l,styles_l,id_list,img_l = [],[],[],[],[]

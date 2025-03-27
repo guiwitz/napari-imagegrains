@@ -5,7 +5,7 @@ os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 from typing import TYPE_CHECKING
 from pathlib import Path
 
-from qtpy.QtWidgets import QVBoxLayout, QTabWidget, QPushButton, QWidget, QFileDialog,  QLineEdit, QGroupBox, QHBoxLayout, QGridLayout, QLabel, QCheckBox, QProgressBar
+from qtpy.QtWidgets import QVBoxLayout, QTabWidget, QPushButton, QWidget, QFileDialog,  QLineEdit, QGroupBox, QHBoxLayout, QGridLayout, QLabel, QCheckBox, QProgressBar, QRadioButton
 
 from imagegrains.segmentation_helper import eval_set
 from imagegrains import data_loader, plotting
@@ -32,7 +32,6 @@ class ImageGrainProcWidget(QWidget):
     def __init__(self, viewer: "napari.viewer.Viewer"):
         super().__init__()
         self.viewer = viewer
-        #self.setLayout(QVBoxLayout())
 
         self.image_path = None
 
@@ -48,16 +47,18 @@ class ImageGrainProcWidget(QWidget):
         self.segmentation.setLayout(self._segmentation_layout)
         self.tabs.addTab(self.segmentation, 'Segmentation')
 
+        self.check_download_model = QCheckBox('Download model')
+        self.check_download_model.setChecked(False)
+        self._segmentation_layout.addWidget(self.check_download_model)
 
         ### Elements "Model download" ###
-        self.model_download_group = VHGroup('Model download', orientation='G')
+        self.model_download_group = VHGroupModel('Model download', orientation='G')
+        self.model_download_group.toggle_visibility('invisible')
         self._segmentation_layout.addWidget(self.model_download_group.gbox)
 
         ##### Elements "Download models" #####
         self.lbl_select_model_for_download = QLabel("Model URL")
         self.repo_model_path_display = QLineEdit("No URL")
-        #self.btn_select_directory_for_download = QPushButton("Download directory")
-        #self.btn_select_directory_for_download .setToolTip("Add local path for model download and click to select")
         self.lbl_select_directory_for_download = QLabel("Download directory")
         self.local_directory_model_path_display = QLineEdit("No local path")
         self.btn_download_model = QPushButton("Download model")
@@ -79,54 +80,63 @@ class ImageGrainProcWidget(QWidget):
         self.model_selection_group.glayout.addWidget(self.btn_select_model_folder, 0, 0, 1, 2)
 
         ##### Elements "Model list" #####
-        self.model_list = FolderList(viewer)
+        self.model_list = FolderList(viewer, file_extensions=['.170223'])
         self.model_selection_group.glayout.addWidget(self.model_list, 1, 0, 1, 2)
 
 
         ### Elements "Image selection"
         self.image_group = VHGroup('Image selection', orientation='G')
         self._segmentation_layout.addWidget(self.image_group.gbox)
-
         self.btn_select_image_folder = QPushButton("Select image folder")
         self.btn_select_image_folder.setToolTip("Select Image Folder")
         self.image_group.glayout.addWidget(self.btn_select_image_folder)
 
         ##### Elements "Image list" #####
-        self.image_list = FolderList(viewer)
+        self.image_list = FolderList(viewer, file_extensions=['.png', '.jpg', '.tif'])
         self.image_group.glayout.addWidget(self.image_list)
+
+
+        ### Single image segmentation
+        self.single_image_segmentation_group = VHGroup('Single image segmentation', orientation='G')
+        self._segmentation_layout.addWidget(self.single_image_segmentation_group.gbox)
+
+        ##### Run segmentation on current image button #####
+        self.btn_run_segmentation_on_single_image = QPushButton("Run segmentation on selected image")
+        self.btn_run_segmentation_on_single_image.setToolTip("Run segmentation on current image")
+        self.single_image_segmentation_group.glayout.addWidget(self.btn_run_segmentation_on_single_image)
 
 
         ### Elements "Segmentation options" ###
         self.segmentation_option_group = VHGroup('Segmentation options', orientation='G')
         self._segmentation_layout.addWidget(self.segmentation_option_group.gbox)
-
+        self.radio_segment_jpgs = QRadioButton('Segment .jpg')
+        self.radio_segment_jpgs.setChecked(True)
+        self.segmentation_option_group.glayout.addWidget(self.radio_segment_jpgs, 0, 0, 1, 1)
+        self.radio_segment_pngs = QRadioButton('Segment .png')
+        self.segmentation_option_group.glayout.addWidget(self.radio_segment_pngs, 1, 0, 1, 1)
+        self.radio_segment_tiffs = QRadioButton('Segment .tif')
+        self.segmentation_option_group.glayout.addWidget(self.radio_segment_tiffs, 2, 0, 1, 1)
         self.check_use_gpu = QCheckBox('Use GPU')
-        self.segmentation_option_group.glayout.addWidget(self.check_use_gpu, 0, 0, 1, 1)
-        #self.check_return_results = QCheckBox('Return results')
-        #self.segmentation_option_group.glayout.addWidget(self.check_return_results, 0, 1, 1, 1)
+        self.segmentation_option_group.glayout.addWidget(self.check_use_gpu, 0, 1, 1, 1)
         self.check_save_mask = QCheckBox('Save mask(s)')
-        self.segmentation_option_group.glayout.addWidget(self.check_save_mask, 0, 1, 1, 1)
-
+        self.segmentation_option_group.glayout.addWidget(self.check_save_mask, 1, 1, 1, 1)
         self.mask_directory = create_widget(value=Path("No local path"), options={"mode": "d", "label": "Choose a directory"})
-        self.segmentation_option_group.glayout.addWidget(self.mask_directory.native, 1, 0, 1, 2)
+        self.segmentation_option_group.glayout.addWidget(self.mask_directory.native, 2, 1, 1, 2)
+
 
         ### Elements "Run segmentation" ###
-        self.run_segmentation_group = VHGroup('Run segmentation', orientation='G')
-        self._segmentation_layout.addWidget(self.run_segmentation_group.gbox)
-
-        self.btn_run_segmentation_on_single_image = QPushButton("Run on current image")
-        self.btn_run_segmentation_on_single_image.setToolTip("Run segmentation on current image")
-        self.run_segmentation_group.glayout.addWidget(self.btn_run_segmentation_on_single_image)
-
-        self.btn_run_segmentation_on_folder = QPushButton("Run on folder")
+        self.folder_segmentation_group = VHGroup('Folder segmentation', orientation='G')
+        self._segmentation_layout.addWidget(self.folder_segmentation_group.gbox)
+        self.btn_run_segmentation_on_folder = QPushButton("Run segmentation on image folder")
         self.btn_run_segmentation_on_folder.setToolTip("Run segmentation on entire folder")
-        self.run_segmentation_group.glayout.addWidget(self.btn_run_segmentation_on_folder)
+        self.folder_segmentation_group.glayout.addWidget(self.btn_run_segmentation_on_folder)
 
-        self.lbl_segmentation_progress = QLabel("Segmentation progress on image folder")
-        self.run_segmentation_group.glayout.addWidget(self.lbl_segmentation_progress)
+        self.lbl_segmentation_progress = QLabel("Segmentation progress")
+        self.folder_segmentation_group.glayout.addWidget(self.lbl_segmentation_progress)
         self.progress_bar = QProgressBar()
         self.progress_bar.setValue(0)
-        self.run_segmentation_group.glayout.addWidget(self.progress_bar)
+        self.folder_segmentation_group.glayout.addWidget(self.progress_bar)
+
 
 
         # performance tab
@@ -158,9 +168,10 @@ class ImageGrainProcWidget(QWidget):
 
 
     def add_connections(self):
+        '''Connects GUI elements with execution functions.'''
 
+        self.check_download_model.stateChanged.connect(self._on_check_toggle_visibility)
         self.btn_download_model.clicked.connect(self._on_click_download_model)
-
         self.image_list.currentItemChanged.connect(self._on_select_image)
         self.model_list.currentItemChanged.connect(self._on_select_model)
         self.btn_select_image_folder.clicked.connect(self._on_click_select_image_folder)
@@ -209,8 +220,9 @@ class ImageGrainProcWidget(QWidget):
 
     def _on_click_segment_single_image(self):
         """
-        Segment image. In development...
+        Segments one individual selected image, independent of the image extension (.jpg, .png, .tif, ...).
         """
+
         model_path = self.model_path
 
         model = models.CellposeModel(gpu=False, pretrained_model=str(model_path))
@@ -244,8 +256,12 @@ class ImageGrainProcWidget(QWidget):
 
     def _on_click_segment_image_folder(self):
         """
-        Segment image. In development...
+        Segments all images with a selected extension (.jpg, .png, .tif) from a folder.
+        Displays original images and their segmentation masks in the napari viewer.
+        Masks can be saved in a selected folder.
+        GPU usage option not yet implemented.
         """
+
         model_path = self.model_path
 
         model = models.CellposeModel(gpu=False, pretrained_model=str(model_path))
@@ -267,12 +283,19 @@ class ImageGrainProcWidget(QWidget):
                 TAR_DIR = self.mask_directory.value
                 MODEL_ID = Path(self.model_name).stem
 
-        img_list = [x for x in os.listdir(path_images_in_folder) if x.endswith(".jpg")]
+        if self.radio_segment_jpgs.isChecked():
+            self.img_extension = ".jpg"
+        if self.radio_segment_pngs.isChecked():
+             self.img_extension = ".png"
+        if self.radio_segment_tiffs.isChecked():
+             self.img_extension = ".tif"
+
+        img_list = [x for x in os.listdir(path_images_in_folder) if x.endswith(self.img_extension)]
 
         for idx, img in enumerate(img_list):
             self.mask_l, self.flow_l, self.styles_l, self.id_list, self.img_l = predict_single_image(path_images_in_folder.joinpath(img), model, mute=True, return_results=True, save_masks=SAVE_MASKS, tar_dir=TAR_DIR, model_id=MODEL_ID)
             self.viewer.open(path_images_in_folder.joinpath(img))
-            self.viewer.add_labels(self.mask_l, name=f"{img}_{MODEL_ID}_pred")
+            self.viewer.add_labels(self.mask_l, name=f"{img[:-4]}_{MODEL_ID}_pred")
             self.progress_bar.setValue(int((idx + 1) / len(img_list) * 100))
 
         self.progress_bar.setValue(100)  # Ensure it's fully completed
@@ -313,6 +336,7 @@ class ImageGrainProcWidget(QWidget):
 
 
     def _on_select_image(self, current_item, previous_item):
+        '''Selects one image from an image list and opens it in napari.'''
         
         success = self.open_image()
         if not success:
@@ -322,6 +346,7 @@ class ImageGrainProcWidget(QWidget):
     
 
     def _on_select_model(self, current_item, previous_item):
+        '''Selects one model from a model list.'''
 
         # if file list is empty stop here
         if self.model_list.currentItem() is None:
@@ -330,12 +355,12 @@ class ImageGrainProcWidget(QWidget):
         # extract model path
         self.model_name = self.model_list.currentItem().text()
         self.model_path = self.model_list.folder_path.joinpath(self.model_name)
-        print(self.model_path)
         
         return self.model_path
         
 
     def open_image(self):
+        '''Opens a selected image in napari.'''
 
         # clear existing layers.
         while len(self.viewer.layers) > 0:
@@ -368,6 +393,18 @@ class ImageGrainProcWidget(QWidget):
         self.axes.clear()
         plotting.AP_IoU_plot(evals,title='FH+', ax=self.axes, fontcolor='white')#,test_idxs=test_idxs1)
         self.mpl_widget.canvas.figure.canvas.draw()
+    
+
+    def _on_check_toggle_visibility(self):
+        '''
+        Toggles visibility of the 'Model download' elements. If checkbox is checked, 'Model download' elements are visible, 
+        otherwise they are invisible. 
+        '''
+
+        if self.check_download_model.isChecked():
+            self.model_download_group.toggle_visibility('visible')
+        else:
+            self.model_download_group.toggle_visibility('invisible')
 
 
 class VHGroup():
@@ -395,4 +432,37 @@ class VHGroup():
         self.gbox.setLayout(self.glayout)
 
 
+class VHGroupModel():
+    """Group box with specific layout.
 
+    Parameters
+    ----------
+    name: str
+        Name of the group box
+    orientation: str
+        'V' for vertical, 'H' for horizontal, 'G' for grid
+    """
+
+    def __init__(self, name, orientation='V'):
+        self.gbox = QGroupBox(name)
+        self.visibility = 'visible'
+        if orientation=='V':
+            self.glayout = QVBoxLayout()
+        elif orientation=='H':
+            self.glayout = QHBoxLayout()
+        elif orientation=='G':
+            self.glayout = QGridLayout()
+        else:
+            raise Exception(f"Unknown orientation {orientation}") 
+
+        self.gbox.setLayout(self.glayout)
+    
+
+    def toggle_visibility(self, visibility):
+        '''Toggles the visibility of all elements bound to the VHGroupModel.'''
+
+        self.visibility = visibility
+        if self.visibility == 'invisible':
+            self.gbox.setVisible(False)
+        else:
+            self.gbox.setVisible(True)
