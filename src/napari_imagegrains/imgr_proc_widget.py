@@ -118,10 +118,11 @@ class ImageGrainProcWidget(QWidget):
         self.segmentation_option_group.glayout.addWidget(self.radio_segment_tiffs, 2, 0, 1, 1)
         self.check_use_gpu = QCheckBox('Use GPU')
         self.segmentation_option_group.glayout.addWidget(self.check_use_gpu, 0, 1, 1, 1)
-        self.check_save_mask = QCheckBox('Save mask(s)')
+        self.check_save_mask = QCheckBox('Save pred(s)')
         self.segmentation_option_group.glayout.addWidget(self.check_save_mask, 1, 1, 1, 1)
-        self.mask_directory = create_widget(value=Path("No local path"), options={"mode": "d", "label": "Choose a directory"})
-        self.segmentation_option_group.glayout.addWidget(self.mask_directory.native, 2, 1, 1, 2)
+        self.pred_directory = create_widget(value=Path("No local path"), options={"mode": "d", "label": "Choose a directory"})
+        self.segmentation_option_group.glayout.addWidget(QLabel("Save preds to"), 3, 0, 1, 1)
+        self.segmentation_option_group.glayout.addWidget(self.pred_directory.native, 3, 1, 1, 1)
 
 
         ### Elements "Run segmentation" ###
@@ -145,12 +146,24 @@ class ImageGrainProcWidget(QWidget):
         self.options_tab.setLayout(self._options_tab_layout)
         self.tabs.addTab(self.options_tab, 'Performance')
 
+        self.perf_folder_group = VHGroup('Folders', orientation='G')
+        self._options_tab_layout.addWidget(self.perf_folder_group.gbox)
+
+        self.perf_pred_directory = create_widget(value=Path("No local path"), options={"mode": "d", "label": "Choose a directory"})
+        self.perf_mask_directory = create_widget(value=Path("No local path"), options={"mode": "d", "label": "Choose a directory"})
+        self.perf_folder_group.glayout.addWidget(QLabel("Pick pred folder"), 0, 0, 1, 1)
+        self.perf_folder_group.glayout.addWidget(self.perf_pred_directory.native, 0, 1, 1, 1)
+        self.perf_folder_group.glayout.addWidget(QLabel("Pick mask folder"), 1, 0, 1, 1)
+        self.perf_folder_group.glayout.addWidget(self.perf_mask_directory.native, 1, 1, 1, 1)
+
         ### Plotting
         self.mpl_widget = NapariMPLWidget(viewer)
         self.axes = self.mpl_widget.canvas.figure.subplots()
         self._options_tab_layout.addWidget(self.mpl_widget.canvas)
-        self.btn_compute_performance = QPushButton("Compute performance")
-        self._options_tab_layout.addWidget(self.btn_compute_performance)
+        self.btn_compute_performance_single_image = QPushButton("Compute performance single image")
+        self._options_tab_layout.addWidget(self.btn_compute_performance_single_image)
+        self.btn_compute_performance_folder = QPushButton("Compute performance folder")
+        self._options_tab_layout.addWidget(self.btn_compute_performance_folder)
 
         #### Options
         self.perf_options_group = VHGroup('Options', orientation='G')
@@ -178,8 +191,8 @@ class ImageGrainProcWidget(QWidget):
         self.btn_select_model_folder.clicked.connect(self._on_click_select_model_folder)
         self.btn_run_segmentation_on_single_image.clicked.connect(self._on_click_segment_single_image)
         self.btn_run_segmentation_on_folder.clicked.connect(self._on_click_segment_image_folder)
-        self.btn_compute_performance.clicked.connect(self._on_click_compute_performance)
-
+        self.btn_compute_performance_single_image.clicked.connect(self._on_click_compute_performance_single_image)
+        self.btn_compute_performance_folder.clicked.connect(self._on_click_compute_performance_folder)
     
     def _on_click_download_model(self):
         """Downloads models from Github"""
@@ -232,7 +245,7 @@ class ImageGrainProcWidget(QWidget):
             raise ValueError("No image selected")
         image_path = self.image_path
 
-        if self.mask_directory.value.as_posix() == "No local path":
+        if self.pred_directory.value.as_posix() == "No local path":
             SAVE_MASKS = False
             TAR_DIR = ""
             img_id = Path(self.image_name).stem
@@ -245,7 +258,7 @@ class ImageGrainProcWidget(QWidget):
                 MODEL_ID = Path(self.model_name).stem
             else:
                 SAVE_MASKS = True
-                TAR_DIR = self.mask_directory.value
+                TAR_DIR = self.pred_directory.value
                 img_id = Path(self.image_name).stem
                 MODEL_ID = Path(self.model_name).stem
 
@@ -269,7 +282,7 @@ class ImageGrainProcWidget(QWidget):
         # single image:
         path_images_in_folder = self.image_folder
 
-        if self.mask_directory.value.as_posix() == "No local path":
+        if self.pred_directory.value.as_posix() == "No local path":
             SAVE_MASKS = False
             TAR_DIR = ""
             MODEL_ID = Path(self.model_name).stem
@@ -280,7 +293,7 @@ class ImageGrainProcWidget(QWidget):
                 MODEL_ID = Path(self.model_name).stem
             else:
                 SAVE_MASKS = True
-                TAR_DIR = self.mask_directory.value
+                TAR_DIR = self.pred_directory.value
                 MODEL_ID = Path(self.model_name).stem
 
         if self.radio_segment_jpgs.isChecked():
@@ -313,7 +326,7 @@ class ImageGrainProcWidget(QWidget):
     #     # image folder
     #     image_path = self.image_folder
 
-    #     if self.mask_directory.value.as_posix() == "No local path":
+    #     if self.pred_directory.value.as_posix() == "No local path":
     #         SAVE_MASKS = False
     #         TAR_DIR = ""
     #         MODEL_ID = Path(self.model_name).stem
@@ -324,7 +337,7 @@ class ImageGrainProcWidget(QWidget):
     #             MODEL_ID = Path(self.model_name).stem
     #         else:
     #             SAVE_MASKS = True
-    #             TAR_DIR = self.mask_directory.value
+    #             TAR_DIR = self.pred_directory.value
     #             MODEL_ID = Path(self.model_name).stem
 
     #     self.mask_l, self.flow_l, self.styles_l, self.id_list, self.img_l = segmentation_helper.predict_folder(image_path, model, mute=True, return_results=True, save_masks=SAVE_MASKS, tar_dir=TAR_DIR, model_id=MODEL_ID)
@@ -376,15 +389,15 @@ class ImageGrainProcWidget(QWidget):
 
         self.viewer.open(self.image_path)
 
-    def _on_click_compute_performance(self):
+    def _on_click_compute_performance_folder(self):
         """
-        Compute performance. In development...
+        Compute performance on folder
         """
 
         imgs,lbls,preds = data_loader.load_from_folders(
             image_directory=self.image_folder,
-            label_directory=self.image_folder,
-            pred_directory=self.mask_directory.value,
+            label_directory=self.perf_mask_directory.value,
+            pred_directory=self.perf_pred_directory.value,
             label_str=self.qtext_mask_str.text(),
             pred_str=self.qtext_pred_str.text()
             )
@@ -392,6 +405,42 @@ class ImageGrainProcWidget(QWidget):
         self.mpl_widget.canvas.figure
         self.axes.clear()
         plotting.AP_IoU_plot(evals,title='FH+', ax=self.axes, fontcolor='white')#,test_idxs=test_idxs1)
+        self.mpl_widget.canvas.figure.canvas.draw()
+
+    def _on_click_compute_performance_single_image(self):
+        """
+        Compute performance on single image
+        """
+        
+        if self.image_list.currentItem() is None:
+            raise ValueError("No image selected")
+        
+        imgs = [self.image_list.folder_path.joinpath(self.image_list.currentItem().text())]
+        lbls = data_loader.find_imgs_masks(
+            image_path=self.perf_mask_directory.value,
+            format='tif',
+            filter_str=imgs[0].stem + self.qtext_mask_str.text())
+        preds = data_loader.find_imgs_masks(
+            image_path=self.perf_pred_directory.value,
+            format='tif',
+            filter_str=imgs[0].stem + "*" + self.qtext_pred_str.text())
+
+        evals = eval_set(imgs=imgs, lbls=lbls, preds=preds, save_results=False)
+        self.mpl_widget.canvas.figure
+        self.axes.clear()
+        plotting.AP_IoU_plot(evals,title='Performance', ax=self.axes, fontcolor='white')#,test_idxs=test_idxs1)
+        # fix plot after creation. Ideally a single image plot function should
+        # be added to the imagegrains library
+        for line in self.axes.lines:
+            if line.get_label() in ['Dataset avg.']:
+                line.remove()
+        for col in self.axes.collections:
+            if col.get_label() in ['1 Std. dev.']:
+                col.remove()
+        self.axes.get_legend().remove()
+
+
+
         self.mpl_widget.canvas.figure.canvas.draw()
     
 
