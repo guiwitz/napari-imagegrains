@@ -5,12 +5,12 @@ os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 from typing import TYPE_CHECKING
 from pathlib import Path
 
-from qtpy.QtWidgets import QVBoxLayout, QTabWidget, QPushButton, QWidget, QFileDialog,  QLineEdit, QGroupBox, QHBoxLayout, QGridLayout, QLabel, QCheckBox, QProgressBar, QRadioButton
+from qtpy.QtWidgets import QVBoxLayout, QTabWidget, QPushButton, QWidget, QFileDialog,  QLineEdit, QGroupBox, QHBoxLayout, QGridLayout, QLabel, QCheckBox, QProgressBar, QRadioButton, QMessageBox
 
 from imagegrains.segmentation_helper import eval_set
 from imagegrains import data_loader, plotting
 
-from cellpose import models
+from cellpose import models, io
 from napari_matplotlib.base import NapariMPLWidget
 
 from magicgui.widgets import create_widget
@@ -57,17 +57,19 @@ class ImageGrainProcWidget(QWidget):
         self._segmentation_layout.addWidget(self.model_download_group.gbox)
 
         ##### Elements "Download models" #####
-        self.lbl_select_model_for_download = QLabel("Model URL")
+        self.lbl_select_model_for_download = QLabel("Model URL (Github or Zenodo)")
         self.repo_model_path_display = QLineEdit("No URL")
-        self.lbl_select_directory_for_download = QLabel("Download directory")
-        self.local_directory_model_path_display = QLineEdit("No local path")
+        self.lbl_select_directory_for_download = QLabel("Download model to directory")
+        # self.local_directory_model_path_display = QLineEdit("No local path")
+        self.local_directory_model_path_display = create_widget(value=Path("No local path"), options={"mode": "d", "label": "Choose a directory"})
         self.btn_download_model = QPushButton("Download model")
         self.btn_download_model.setToolTip("Add URL to model repo and click to download models")
 
         self.model_download_group.glayout.addWidget(self.lbl_select_model_for_download, 0, 0, 1, 1)
         self.model_download_group.glayout.addWidget(self.repo_model_path_display,  0, 1, 1, 1)
         self.model_download_group.glayout.addWidget(self.lbl_select_directory_for_download, 1, 0, 1, 1)
-        self.model_download_group.glayout.addWidget(self.local_directory_model_path_display,  1, 1, 1, 1)
+        # self.model_download_group.glayout.addWidget(self.local_directory_model_path_display,  1, 1, 1, 1)
+        self.model_download_group.glayout.addWidget(self.local_directory_model_path_display.native,  1, 1, 1, 1)
         self.model_download_group.glayout.addWidget(self.btn_download_model, 2, 0, 1, 2)
 
 
@@ -105,6 +107,16 @@ class ImageGrainProcWidget(QWidget):
         self.btn_run_segmentation_on_single_image.setToolTip("Run segmentation on current image")
         self.single_image_segmentation_group.glayout.addWidget(self.btn_run_segmentation_on_single_image)
 
+        ##### Save manually processed mask button
+        self.btn_save_manually_processed_mask = QPushButton("Save manually processed mask")
+        self.btn_save_manually_processed_mask.setToolTip("Save manually processed mask")
+        self.single_image_segmentation_group.glayout.addWidget(self.btn_save_manually_processed_mask)
+
+        ##### Directory for manually processed masks
+        self.man_proc_directory = create_widget(value=Path("No local path"), options={"mode": "d", "label": "Choose a directory"})
+        self.single_image_segmentation_group.glayout.addWidget(QLabel("Save manually processed mask to"))
+        self.single_image_segmentation_group.glayout.addWidget(self.man_proc_directory.native)
+
 
         ### Elements "Segmentation options" ###
         self.segmentation_option_group = VHGroup('Segmentation options', orientation='G')
@@ -120,6 +132,8 @@ class ImageGrainProcWidget(QWidget):
         self.segmentation_option_group.glayout.addWidget(self.check_use_gpu, 0, 1, 1, 1)
         self.check_save_mask = QCheckBox('Save pred(s)')
         self.segmentation_option_group.glayout.addWidget(self.check_save_mask, 1, 1, 1, 1)
+        self.check_load_saved_prediction_mask = QCheckBox('Load pred(s)')
+        self.segmentation_option_group.glayout.addWidget(self.check_load_saved_prediction_mask, 2, 1, 1, 1)
         self.pred_directory = create_widget(value=Path("No local path"), options={"mode": "d", "label": "Choose a directory"})
         self.segmentation_option_group.glayout.addWidget(QLabel("Save preds to"), 3, 0, 1, 1)
         self.segmentation_option_group.glayout.addWidget(self.pred_directory.native, 3, 1, 1, 1)
@@ -190,6 +204,7 @@ class ImageGrainProcWidget(QWidget):
         self.btn_select_image_folder.clicked.connect(self._on_click_select_image_folder)
         self.btn_select_model_folder.clicked.connect(self._on_click_select_model_folder)
         self.btn_run_segmentation_on_single_image.clicked.connect(self._on_click_segment_single_image)
+        self.btn_save_manually_processed_mask.clicked.connect(self._on_click_save_manually_processed_mask)
         self.btn_run_segmentation_on_folder.clicked.connect(self._on_click_segment_image_folder)
         self.btn_compute_performance_single_image.clicked.connect(self._on_click_compute_performance_single_image)
         self.btn_compute_performance_folder.clicked.connect(self._on_click_compute_performance_folder)
@@ -199,18 +214,23 @@ class ImageGrainProcWidget(QWidget):
 
         if self.repo_model_path_display.text() == "No URL":
             return False
-        if self.local_directory_model_path_display.text() == "No local path":
+        #if self.local_directory_model_path_display.text() == "No local path":
+        if self.local_directory_model_path_display.value == "No local path":
              return False 
         
         self.model_url_user = self.repo_model_path_display.text()
-        self.model_url_processed = self.model_url_user.replace("github.com", "raw.githubusercontent.com").replace("blob/", "")
-        self.model_name = (self.model_url_processed.split("/")[-1])
-        self.model_save_path = self.local_directory_model_path_display.text()
+        if "github.com" in self.model_url_user:
+            self.model_url_processed = self.model_url_user.replace("github.com", "raw.githubusercontent.com").replace("blob/", "")
+            self.model_name = (self.model_url_processed.split("/")[-1])
+            # self.model_save_path = self.local_directory_model_path_display.text()
+            self.model_save_path = self.local_directory_model_path_display.value
 
-        content_in_bytes = requests.get(str(self.model_url_processed)).content
-        assert type(content_in_bytes) is bytes
-        with open(str(Path(self.model_save_path).joinpath(self.model_name)), 'wb') as f_out:
-             f_out.write(content_in_bytes)
+            content_in_bytes = requests.get(str(self.model_url_processed)).content
+            assert type(content_in_bytes) is bytes
+            with open(str(Path(self.model_save_path).joinpath(self.model_name)), 'wb') as f_out:
+                f_out.write(content_in_bytes)
+        else:
+            self.notify_user("Message", "So far, model to be downloaded needs to be on Github.")
 
 
     def _on_click_select_image_folder(self):
@@ -236,9 +256,11 @@ class ImageGrainProcWidget(QWidget):
         Segments one individual selected image, independent of the image extension (.jpg, .png, .tif, ...).
         """
 
-        model_path = self.model_path
-
-        model = models.CellposeModel(gpu=False, pretrained_model=str(model_path))
+        try:
+            model_path = self.model_path
+            model = models.CellposeModel(gpu=False, pretrained_model=str(model_path))
+        except:
+            self.notify_user("Selection Required", "No model selected. Please select a model from the model list.")
 
         # single image:
         if self.image_path is None:
@@ -265,8 +287,32 @@ class ImageGrainProcWidget(QWidget):
         self.mask_l, self.flow_l, self.styles_l, self.id_list, self.img_l = predict_single_image(image_path, model, mute=True, return_results=True, save_masks=SAVE_MASKS, tar_dir=TAR_DIR, model_id=MODEL_ID)
 
         self.viewer.add_labels(self.mask_l[0], name=f"{img_id}_{MODEL_ID}_pred")
+        
     
+    def notify_user(self, message_title, message):
+        """
+        Generates a pop up message box an notifies the user with a message.
+        """
+        msg_box = QMessageBox()
+        msg_box.setIcon(QMessageBox.Warning)
+        msg_box.setWindowTitle(str(message_title))
+        msg_box.setText(str(message))
+        msg_box.setStandardButtons(QMessageBox.Ok)
+        msg_box.exec_()
 
+
+    def _on_click_save_manually_processed_mask(self):
+        """Saves the maually processed mask in the folder selected below the button."""
+
+        target_directory = self.man_proc_directory.value
+        mask_name = self.viewer.layers.selection.active.name
+        mask = self.viewer.layers.selection.active
+        try:
+            io.imsave(f'{target_directory}/{mask_name}_manual.tif', mask.data)
+        except:
+            self.notify_user("Selection Required", "Please select a folder to save manually processed mask.")
+
+    
     def _on_click_segment_image_folder(self):
         """
         Segments all images with a selected extension (.jpg, .png, .tif) from a folder.
@@ -275,9 +321,11 @@ class ImageGrainProcWidget(QWidget):
         GPU usage option not yet implemented.
         """
 
-        model_path = self.model_path
-
-        model = models.CellposeModel(gpu=False, pretrained_model=str(model_path))
+        try:
+            model_path = self.model_path
+            model = models.CellposeModel(gpu=False, pretrained_model=str(model_path))
+        except:
+            self.notify_user("Selection Required", "No model selected. Please select a model from the model list.")
 
         # single image:
         path_images_in_folder = self.image_folder
@@ -314,44 +362,23 @@ class ImageGrainProcWidget(QWidget):
         self.progress_bar.setValue(100)  # Ensure it's fully completed
 
 
-    # def _on_click_segment_image_folder_via_API(self):
-    #     """
-    #     Segment all images in selected folder. In development...
-    #     """
-
-    #     model_path = self.model_path
-
-    #     model = models.CellposeModel(gpu=False, pretrained_model=str(model_path))
-
-    #     # image folder
-    #     image_path = self.image_folder
-
-    #     if self.pred_directory.value.as_posix() == "No local path":
-    #         SAVE_MASKS = False
-    #         TAR_DIR = ""
-    #         MODEL_ID = Path(self.model_name).stem
-    #     else:
-    #         if not self.check_save_mask.isChecked():
-    #             SAVE_MASKS = False
-    #             TAR_DIR = ""
-    #             MODEL_ID = Path(self.model_name).stem
-    #         else:
-    #             SAVE_MASKS = True
-    #             TAR_DIR = self.pred_directory.value
-    #             MODEL_ID = Path(self.model_name).stem
-
-    #     self.mask_l, self.flow_l, self.styles_l, self.id_list, self.img_l = segmentation_helper.predict_folder(image_path, model, mute=True, return_results=True, save_masks=SAVE_MASKS, tar_dir=TAR_DIR, model_id=MODEL_ID)
-
-    #     for idx, _ in enumerate(self.mask_l):
-            
-    #         self.viewer.open(self.img_l[idx])
-    #         self.viewer.add_labels(self.mask_l[idx], name=f"{image_path}_{MODEL_ID}_pred")
-
-
     def _on_select_image(self, current_item, previous_item):
-        '''Selects one image from an image list and opens it in napari.'''
-        
+        '''
+        Selects one image from an image list and opens it in napari.
+        In case that the "Load pred(s)" checkbox is checked,
+        the function also loads the corresponding predicted
+        masks from the mask folder.
+        '''
+
         success = self.open_image()
+
+        if self.check_load_saved_prediction_mask.isChecked():
+            for idx, predicted_mask in enumerate(os.listdir(self.pred_directory.value)):
+                if predicted_mask.find(self.image_name[0:-4]) != -1:
+                    relevant_predicted_mask = os.listdir(self.pred_directory.value)[idx]
+                    relevant_prediction_path = self.pred_directory.value.joinpath(relevant_predicted_mask)
+                    self.viewer.open(relevant_prediction_path, layer_type="labels")
+
         if not success:
             return False
         else:
@@ -386,8 +413,8 @@ class ImageGrainProcWidget(QWidget):
         # open image
         self.image_name = self.image_list.currentItem().text()
         self.image_path = self.image_list.folder_path.joinpath(self.image_name)
-
         self.viewer.open(self.image_path)
+
 
     def _on_click_compute_performance_folder(self):
         """
@@ -406,6 +433,7 @@ class ImageGrainProcWidget(QWidget):
         self.axes.clear()
         plotting.AP_IoU_plot(evals,title='FH+', ax=self.axes, fontcolor='white')#,test_idxs=test_idxs1)
         self.mpl_widget.canvas.figure.canvas.draw()
+
 
     def _on_click_compute_performance_single_image(self):
         """
@@ -438,9 +466,6 @@ class ImageGrainProcWidget(QWidget):
             if col.get_label() in ['1 Std. dev.']:
                 col.remove()
         self.axes.get_legend().remove()
-
-
-
         self.mpl_widget.canvas.figure.canvas.draw()
     
 
