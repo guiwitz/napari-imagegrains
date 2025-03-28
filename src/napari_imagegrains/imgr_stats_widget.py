@@ -232,7 +232,12 @@ class ImageGrainStatsWidget(QWidget):
                 self._on_run_grainsize_on_image()
             current_props = self.props_image
         else:
-            current_props = self.props_dataset[self.file_ids.index(Path(self.image_name).stem)]
+            im_name = Path(self.image_name).stem
+            match_image = [i for i in range(len(self.file_ids)) if im_name in self.file_ids[i]]
+            if len(match_image) != 1:
+                print('Image not found in dataset')
+                return
+            current_props = self.props_dataset[match_image[0]]
 
         padding_size = 2
         _,_,a_coords,b_coords = grainsizing.fit_grain_axes(current_props, method=self.dropdown_fit_method.value,padding_size=padding_size)
