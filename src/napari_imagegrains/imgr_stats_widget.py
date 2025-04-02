@@ -13,6 +13,7 @@ from napari_matplotlib.base import NapariMPLWidget
 
 from .imgr_proc_widget import VHGroup
 from .folder_list_widget import FolderList
+from .utils import find_match_in_folder, find_matching_data_index
 from imagegrains import grainsizing, data_loader, plotting
 
 if TYPE_CHECKING:
@@ -75,6 +76,10 @@ class ImageGrainStatsWidget(QWidget):
         self.qtext_mask_str = QLineEdit("_mask")
         self.mask_group.glayout.addWidget(QLabel("Mask string"), 2, 0, 1,1)
         self.mask_group.glayout.addWidget(self.qtext_mask_str, 2, 1, 1, 1)
+
+        self.qtext_model_str = QLineEdit("")
+        self.mask_group.glayout.addWidget(QLabel("Model string"), 3, 0, 1,1)
+        self.mask_group.glayout.addWidget(self.qtext_model_str, 3, 1, 1, 1)
         
         ### Elements "Analysis"
         self.analysis_group = VHGroup('Analysis', orientation='G')
@@ -97,8 +102,8 @@ class ImageGrainStatsWidget(QWidget):
         self.displayfit_group = VHGroup('Display fit', orientation='G')
         self._properties_layout.addWidget(self.displayfit_group.gbox)
 
-        self.dropdown_fit_method = create_widget(value = 'convex_hull', 
-                                                 options={'choices': ['convex_hull', 'mask_outline']},
+        self.dropdown_fit_method = create_widget(value = 'mask_outline', 
+                                                 options={'choices': ['ellipse', 'mask_outline']},
                                                 widget_type='ComboBox')
         self.displayfit_group.glayout.addWidget(self.dropdown_fit_method.native)
         self.btn_display_fit = QPushButton("Display fit")
@@ -189,14 +194,15 @@ class ImageGrainStatsWidget(QWidget):
         if not success:
             return False
         else:
-            mask_str = self.qtext_mask_str.text()
-            mask_format = 'tif'
+            # find mask corresponding to image
             self.mask_path = None
-            mask_list = natsorted(glob(f'{self.mask_folder}/{Path(self.image_name).stem}*{mask_str}*.{mask_format}'))
-            if len(mask_list) > 0:
-                self.mask_path = mask_list[0]
-                self.open_mask()
-
+            self.mask_path = find_match_in_folder(
+                self.mask_folder, 
+                self.image_name, 
+                model_str=self.qtext_model_str.text(),
+                data_str=self.qtext_mask_str.text(),
+                data_format='tif')
+            self.open_mask()
             return self.image_path
         
         
@@ -222,6 +228,8 @@ class ImageGrainStatsWidget(QWidget):
 
     def open_mask(self):
 
+        if self.mask_path is None:
+            return False
         self.viewer.open(self.mask_path, layer_type='labels')
 
 
@@ -232,35 +240,48 @@ class ImageGrainStatsWidget(QWidget):
                 self._on_run_grainsize_on_image()
             current_props = self.props_image
         else:
-            im_name = Path(self.image_name).stem
-            match_image = [i for i in range(len(self.file_ids)) if im_name in self.file_ids[i]]
-            if len(match_image) != 1:
-                print('Image not found in dataset')
-                return
-            current_props = self.props_dataset[match_image[0]]
+            model_str = self.qtext_model_str.text() if self.qtext_model_str.text() != "" else None
+            match_index = find_matching_data_index(self.image_path, self.file_ids, key_string=model_str)
+            if len(match_index) == 0:
+                raise ValueError(f'No mask found for current image {self.image_path}')
+            elif len(match_index) > 1:
+                raise ValueError(f'Multiple masks {match_index} found for current image {self.image_path}')
+            else:
+                current_props = self.props_dataset[match_index[0]]
 
-        padding_size = 2
-        _,_,a_coords,b_coords = grainsizing.fit_grain_axes(current_props, method=self.dropdown_fit_method.value,padding_size=padding_size)
+        if self.dropdown_fit_method.value == 'mask_outline':
+            padding_size = 2
+            ## temporary fix as the padding function only handles the cases of 'mask_outline' and 'convex_hull'
+            #_,_,a_coords,b_coords = grainsizing.fit_grain_axes(current_props, method=self.dropdown_fit_method.value,padding_size=padding_size)
+            _,_,a_coords,b_coords = grainsizing.fit_grain_axes(current_props, method='mask_outline',padding_size=padding_size)
 
         if 'contours' in self.viewer.layers:
-            self.viewer.layers['contours'].clear()
+            self.viewer.layers['contours'].data = []#clear()
         else:
             self.viewer.add_shapes(name='contours', face_color=[0,0,0,0], edge_color='orange')
         
         if 'axis' in self.viewer.layers:
-            self.viewer.layers['axis'].clear()
+            self.viewer.layers['axis'].data = []#clear()
         else:
             self.viewer.add_shapes(name='axis', face_color=[0,0,0,0], edge_color='red')
 
         for _idx in range(len(current_props)):
-            miny, minx, maxy, maxx = current_props[_idx].bbox
 
-            img_pad = grainsizing.image_padding(current_props[_idx].image,padding_size=padding_size)
-            contours = grainsizing.contour_grain(img_pad)
-            for contour in contours:
-                self.viewer.layers['contours'].add_polygons([np.array(contour) + np.array([-(padding_size-.5)+miny, -(padding_size-.5)+minx])])
-                self.viewer.layers['axis'].add_lines([np.array(a_coords[_idx]) + np.array([-(padding_size-.5)+miny, -(padding_size-.5)+minx])], edge_color='red')
-                self.viewer.layers['axis'].add_lines([np.array(b_coords[_idx]) + np.array([-(padding_size-.5)+miny, -(padding_size-.5)+minx])], edge_color='blue')
+            if self.dropdown_fit_method.value == 'mask_outline':
+
+                miny, minx, maxy, maxx = current_props[_idx].bbox
+
+                img_pad = grainsizing.image_padding(current_props[_idx].image,padding_size=padding_size)
+                contours = grainsizing.contour_grain(img_pad)
+                for contour in contours:
+                    self.viewer.layers['contours'].add_polygons([np.array(contour) + np.array([-(padding_size-.5)+miny, -(padding_size-.5)+minx])])
+                    self.viewer.layers['axis'].add_lines([np.array(a_coords[_idx]) + np.array([-(padding_size-.5)+miny, -(padding_size-.5)+minx])], edge_color='red')
+                    self.viewer.layers['axis'].add_lines([np.array(b_coords[_idx]) + np.array([-(padding_size-.5)+miny, -(padding_size-.5)+minx])], edge_color='blue')
+            
+            elif self.dropdown_fit_method.value == 'ellipse':
+                x0,x1,x2,x3,x4,y0,y1,y2,y3,y4,x,y= plotting.ell_from_props(current_props,_idx)
+                self.viewer.layers['axis'].add_polygons(np.array([y,x]).T, edge_color='red')
+
 
     def _on_plot_dataset(self):
 

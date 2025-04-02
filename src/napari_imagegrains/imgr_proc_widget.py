@@ -17,7 +17,7 @@ from magicgui.widgets import create_widget
 
 
 import warnings
-warnings.filterwarnings("ignore")
+#warnings.filterwarnings("ignore")
 
 import requests
 
