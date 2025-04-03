@@ -14,6 +14,7 @@ from cellpose import models, io
 from napari_matplotlib.base import NapariMPLWidget
 
 from magicgui.widgets import create_widget
+import pandas as pd
 
 
 import warnings
@@ -23,7 +24,7 @@ import requests
 
 from .folder_list_widget import FolderList
 from .access_single_image_widget import predict_single_image
-from .utils import find_match_in_folder
+from .utils import find_match_in_folder, compute_average_ap
 
 if TYPE_CHECKING:
     import napari
@@ -181,7 +182,9 @@ class ImageGrainProcWidget(QWidget):
         self._options_tab_layout.addWidget(self.btn_compute_performance_single_image)
         self.btn_compute_performance_folder = QPushButton("Compute performance folder")
         self._options_tab_layout.addWidget(self.btn_compute_performance_folder)
-
+        self.btn_save_average_precision = QPushButton("Save average precision")
+        self._options_tab_layout.addWidget(self.btn_save_average_precision)
+        
         #### Options
         self.perf_options_group = VHGroup('Options', orientation='G')
         self._options_tab_layout.addWidget(self.perf_options_group.gbox)
@@ -214,6 +217,8 @@ class ImageGrainProcWidget(QWidget):
         self.btn_run_segmentation_on_folder.clicked.connect(self._on_click_segment_image_folder)
         self.btn_compute_performance_single_image.clicked.connect(self._on_click_compute_performance_single_image)
         self.btn_compute_performance_folder.clicked.connect(self._on_click_compute_performance_folder)
+        self.btn_save_average_precision.clicked.connect(self._on_save_average_precision)
+
     
     def _on_click_download_model(self):
         """Downloads models from Github"""
@@ -443,7 +448,7 @@ class ImageGrainProcWidget(QWidget):
             label_str=self.qtext_mask_str.text(),
             pred_str=self.qtext_pred_str.text()
             )
-        evals = eval_set(imgs=imgs, lbls=lbls, preds=preds, save_results=False)
+        evals = eval_set(imgs=imgs, lbls=lbls, preds=preds, save_results=True, tar_dir=self.perf_pred_directory.value)
         self.mpl_widget.canvas.figure
         self.axes.clear()
         plotting.AP_IoU_plot(evals,title='FH+', ax=self.axes, fontcolor='white')#,test_idxs=test_idxs1)
@@ -482,6 +487,26 @@ class ImageGrainProcWidget(QWidget):
                 col.remove()
         self.axes.get_legend().remove()
         self.mpl_widget.canvas.figure.canvas.draw()
+
+    def _on_save_average_precision(self):
+
+        imgs,lbls,preds = data_loader.load_from_folders(
+            image_directory=self.image_folder,
+            label_directory=self.perf_mask_directory.value,
+            pred_directory=self.perf_pred_directory.value,
+            label_str=self.qtext_mask_str.text(),
+            pred_str=self.qtext_pred_str.text()
+            )
+        evals = eval_set(imgs=imgs, lbls=lbls, preds=preds, save_results=False)
+        avg_l, std_l, std_ul, std_ll = compute_average_ap(evals)
+        ap_stats_df = pd.DataFrame(
+            {'avg': avg_l,
+             'std': std_l,
+             'std_ul': std_ul,
+             'std_ll': std_ll})
+        ap_stats_df.to_csv(self.perf_pred_directory.value /
+                           'average_precision.csv', index=False)
+
     
 
     def _on_check_toggle_visibility(self):

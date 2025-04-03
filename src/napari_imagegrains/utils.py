@@ -3,6 +3,7 @@ from glob import glob
 from natsort import natsorted
 from warnings import warn
 import pandas as pd
+import numpy as np
 
 
 def find_matching_data_index(reference_path, data_name_list, key_string=None):
@@ -95,3 +96,12 @@ def read_complete_grain_files(grain_file_list):
             warn(f'Could not read {grain_file} with error {e}')
 
     return grains
+
+def compute_average_ap(evals):
+
+    all_ap = np.stack([x['ap'] for x in evals.values()])
+    avg_l = np.mean(all_ap, axis=0)
+    std_l = np.std(all_ap, axis=0)
+    std_ul = avg_l + std_l
+    std_ll = avg_l - std_l
+    return avg_l, std_l, std_ul, std_ll
