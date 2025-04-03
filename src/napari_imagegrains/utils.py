@@ -2,6 +2,7 @@ from pathlib import Path
 from glob import glob
 from natsort import natsorted
 from warnings import warn
+import pandas as pd
 
 
 def find_matching_data_index(reference_path, data_name_list, key_string=None):
@@ -25,8 +26,8 @@ def find_matching_data_index(reference_path, data_name_list, key_string=None):
         The default is None.
     """
     
-    referene_name = Path(reference_path).stem
-    match_index = [i for i in range(len(data_name_list)) if referene_name in data_name_list[i]]
+    reference_name = Path(reference_path).stem
+    match_index = [i for i in range(len(data_name_list)) if reference_name in data_name_list[i]]
     if key_string:
         match_index = [i for i in match_index if key_string in data_name_list[i]]
 
@@ -70,4 +71,27 @@ def find_match_in_folder(folder, image_name, model_str, data_str, data_format):
         mask = mask_list[0]
     
     return mask
-           
+
+def read_complete_grain_files(grain_file_list):
+    """
+    Read the complete grain files and return a list of dictionaries containing the data.
+
+    Parameters
+    ----------
+    grain_file_list : list
+        List of grain file paths.
+
+    Returns
+    -------
+    grains : list
+        List of pandas dataframes containing the data.
+    """
+    
+    grains = []
+    for grain_file in grain_file_list:
+        try:
+            grains.append(pd.read_csv(grain_file))
+        except Exception as e:
+            warn(f'Could not read {grain_file} with error {e}')
+
+    return grains
