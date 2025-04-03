@@ -146,7 +146,7 @@ class ImageGrainStatsWidget(QWidget):
         self.displayfit_group = VHGroup('Display fit', orientation='G')
         self._properties_layout.addWidget(self.displayfit_group.gbox)
 
-        self.dropdown_fit_method = create_widget(value = 'mask_outline', 
+        self.dropdown_fit_method = create_widget(value = 'ellipse', 
                                                  options={'choices': ['ellipse', 'mask_outline']},
                                                 widget_type='ComboBox')
         self.displayfit_group.glayout.addWidget(self.dropdown_fit_method.native)
@@ -389,8 +389,9 @@ class ImageGrainStatsWidget(QWidget):
             
             elif self.dropdown_fit_method.value == 'ellipse':
                 x0,x1,x2,x3,x4,y0,y1,y2,y3,y4,x,y= plotting.ell_from_props(current_props,_idx)
-                self.viewer.layers['axis'].add_polygons(np.array([y,x]).T, edge_color='red')
-
+                self.viewer.layers['axis'].add_polygons(np.array([y,x]).T, edge_color='orange')
+                self.viewer.layers['axis'].add_lines(np.array([[y1, x1],[y4, x4]]), edge_color='blue')
+                self.viewer.layers['axis'].add_lines(np.array([[y2, x2],[y3, x3]]), edge_color='red')
 
     def _on_plot_dataset(self):
 
