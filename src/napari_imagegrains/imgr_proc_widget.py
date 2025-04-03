@@ -23,6 +23,7 @@ import requests
 
 from .folder_list_widget import FolderList
 from .access_single_image_widget import predict_single_image
+from .utils import find_match_in_folder
 
 if TYPE_CHECKING:
     import napari
@@ -359,9 +360,16 @@ class ImageGrainProcWidget(QWidget):
         img_list = [x for x in os.listdir(path_images_in_folder) if x.endswith(self.img_extension)]
 
         for idx, img in enumerate(img_list):
-            self.mask_l, self.flow_l, self.styles_l, self.id_list, self.img_l = predict_single_image(path_images_in_folder.joinpath(img), model, mute=True, return_results=True, save_masks=SAVE_MASKS, tar_dir=TAR_DIR, model_id=MODEL_ID)
+            self.mask_l, self.flow_l, self.styles_l, self.id_list, self.img_l = predict_single_image(
+                image_path=path_images_in_folder.joinpath(img), 
+                model=model,
+                mute=True, 
+                return_results=True,
+                save_masks=SAVE_MASKS,
+                tar_dir=TAR_DIR,
+                model_id=MODEL_ID)
             self.viewer.open(path_images_in_folder.joinpath(img))
-            self.viewer.add_labels(self.mask_l, name=f"{img[:-4]}_{MODEL_ID}_pred")
+            self.viewer.add_labels(self.mask_l, name=f"{Path(img).stem}_{MODEL_ID}_pred")
             self.progress_bar.setValue(int((idx + 1) / len(img_list) * 100))
 
         self.progress_bar.setValue(100)  # Ensure it's fully completed
@@ -378,11 +386,13 @@ class ImageGrainProcWidget(QWidget):
         success = self.open_image()
 
         if self.check_load_saved_prediction_mask.isChecked():
-            for idx, predicted_mask in enumerate(os.listdir(self.pred_directory.value)):
-                if predicted_mask.find(self.image_name[0:-4]) != -1:
-                    relevant_predicted_mask = os.listdir(self.pred_directory.value)[idx]
-                    relevant_prediction_path = self.pred_directory.value.joinpath(relevant_predicted_mask)
-                    self.viewer.open(relevant_prediction_path, layer_type="labels")
+            relevant_prediction_path = find_match_in_folder(
+                folder=self.pred_directory.value,
+                image_name=self.image_name,
+                model_str='', data_str='pred', data_format='tif')
+            if relevant_prediction_path is None:
+                return False
+            success = self.viewer.open(relevant_prediction_path, layer_type="labels")
 
         if not success:
             return False
