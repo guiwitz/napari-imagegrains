@@ -171,6 +171,11 @@ class ImageGrainStatsWidget(QWidget):
         self.grainsize_plot_group.glayout.addWidget(self.grainsize_plot.canvas)
         self.grainsize_plot_group.glayout.addWidget(self.grainsize_plot.toolbar)
 
+        self.combobox_props_for_size = create_widget(value = 'ell: b-axis (px)',
+                                                 options={'choices': ['ell: b-axis (px)', 'ell: a-axis (px)']},
+                                                widget_type='ComboBox')
+        self.grainsize_plot_group.glayout.addWidget(self.combobox_props_for_size.native)
+
         self.btn_plot_dataset = QPushButton("Plot for folder")
         self.btn_plot_dataset.setToolTip("Plot for folder")
         self.grainsize_plot_group.glayout.addWidget(self.btn_plot_dataset)
@@ -229,6 +234,7 @@ class ImageGrainStatsWidget(QWidget):
         
         self.df_props = pd.concat(self.props_df_dataset)
         self._update_combobox_props(self.df_props.columns)
+        self._update_combobox_props_for_size(self.df_props.columns)
         self._on_select_prop_to_plot()
         
         
@@ -237,6 +243,11 @@ class ImageGrainStatsWidget(QWidget):
         self.combobox_prop_to_plot.choices = newprops
         self.combobox_prop_to_plot.changed.connect(self._on_select_prop_to_plot)
 
+    def _update_combobox_props_for_size(self, newprops):
+        self.combobox_props_for_size.changed.disconnect(self._on_select_prop_to_plot)
+        self.combobox_props_for_size.choices = newprops
+        self.combobox_props_for_size.changed.connect(self._on_select_prop_to_plot)
+
 
     def _on_run_grainsize_on_image(self, event=None):
 
@@ -244,6 +255,7 @@ class ImageGrainStatsWidget(QWidget):
         self.props_df_image, self.props_image = grainsizing.grains_from_masks(
             masks=self.viewer.layers[Path(self.mask_path).stem].data)
         self._update_combobox_props(self.props_df_image.columns)
+        self._update_combobox_props_for_size(self.props_df_image.columns)
         
         self.axes.clear()
         sns.histplot(data=self.props_df_image, x='area', ax=self.axes)
@@ -261,6 +273,7 @@ class ImageGrainStatsWidget(QWidget):
         # concatenated dataframe of all images
         self.df_props = pd.concat(self.props_df_dataset)
         self._update_combobox_props(self.df_props.columns)
+        self._update_combobox_props_for_size(self.df_props.columns)
         self._on_select_prop_to_plot()
 
     def _on_load_grainsize_image(self, event=None):
@@ -275,10 +288,10 @@ class ImageGrainStatsWidget(QWidget):
         elif len(grain_files) > 1:
             raise ValueError(f'Multiple grain files found for image {self.image_name}')
         
-        self.props_df_dataset = read_complete_grain_files(grain_file_list=grain_files)
+        self.props_df_image = read_complete_grain_files(grain_file_list=grain_files)[0]
         # concatenated dataframe of all images
-        self.df_props = pd.concat(self.props_df_dataset)
-        self._update_combobox_props(self.df_props.columns)
+        self._update_combobox_props(self.props_df_image.columns)
+        self._update_combobox_props_for_size(self.props_df_image.columns)
         self._on_select_prop_to_plot()
 
 
@@ -294,6 +307,10 @@ class ImageGrainStatsWidget(QWidget):
         self.axes.xaxis.label.set_color('white')
         self.axes.yaxis.label.set_color('white')
         self.mpl_widget.canvas.figure.canvas.draw()
+
+    def _on_select_prop_for_size(self, event=None):
+
+        self._on_plot_dataset()
 
     def _on_select_image(self, current_item, previous_item):
 
@@ -395,13 +412,15 @@ class ImageGrainStatsWidget(QWidget):
 
     def _on_plot_dataset(self):
 
+        column = self.combobox_props_for_size.value
         grain_files = data_loader.load_grain_set(file_dir=self.mask_folder, gsd_str=self.qtext_model_str.text())
-        gsd_l, id_l = grainsizing.gsd_for_set(gsds=grain_files, column='ell: b-axis (px)')
+        gsd_l, id_l = grainsizing.gsd_for_set(gsds=grain_files, column=column)
 
         self.grainsize_axes.clear()
         colors = plt.cm.tab10(np.linspace(0, 1, len(gsd_l)))
         for gsd, id, c in zip(gsd_l, id_l, colors):
-            plotting.plot_gsd(gsd=gsd, ax=self.grainsize_axes, gsd_id=id, color=c, label_axes=True)
+            plotting.plot_gsd(gsd=gsd, ax=self.grainsize_axes, gsd_id=id,
+                              color=c, label_axes=True, length_max=np.max(gsd_l))
         
         self.grainsize_axes.set_title(f'Grain size distribution for {self.mask_folder.name}', fontsize=12, color='white')
         self.grainsize_axes.tick_params(axis='both', colors='white')
@@ -412,8 +431,9 @@ class ImageGrainStatsWidget(QWidget):
 
     def _on_plot_single_image(self):
 
+        column = self.combobox_props_for_size.value
         grain_files = data_loader.load_grain_set(file_dir=self.mask_folder, gsd_str=self.qtext_model_str.text())
-        gsd_l, id_l = grainsizing.gsd_for_set(gsds=grain_files, column='ell: b-axis (px)')
+        gsd_l, id_l = grainsizing.gsd_for_set(gsds=grain_files, column=column)
 
         idx = find_matching_data_index(self.image_path, id_l)
         if len(idx) == 0:
