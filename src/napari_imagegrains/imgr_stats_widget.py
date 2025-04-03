@@ -222,13 +222,14 @@ class ImageGrainStatsWidget(QWidget):
 
     def _on_run_grainsize_on_folder(self):
         
+        self.plot_type = 'multi'
         composite_name = self.qtext_model_str.text() + self.qtext_mask_str.text()
         self.props_df_dataset, self.props_dataset, self.file_ids = grainsizing.grains_in_dataset(
             data_dir=self.mask_folder, mask_str=composite_name, return_results=True)
         
         self.df_props = pd.concat(self.props_df_dataset)
         self._update_combobox_props(self.df_props.columns)
-        self._on_select_prop_to_plot(plot_type='multi')
+        self._on_select_prop_to_plot()
         
         
     def _update_combobox_props(self, newprops):
@@ -239,6 +240,7 @@ class ImageGrainStatsWidget(QWidget):
 
     def _on_run_grainsize_on_image(self, event=None):
 
+        self.plot_type = 'single'
         self.props_df_image, self.props_image = grainsizing.grains_from_masks(
             masks=self.viewer.layers[Path(self.mask_path).stem].data)
         self._update_combobox_props(self.props_df_image.columns)
@@ -251,17 +253,19 @@ class ImageGrainStatsWidget(QWidget):
         self.mpl_widget.canvas.figure.canvas.draw()
 
     def _on_load_grainsize(self, event=None):
-
+        
+        self.plot_type = 'multi'
         composite_name = self.qtext_model_str.text() + self.qtext_mask_str.text()
         grain_files = data_loader.load_grain_set(file_dir=self.mask_folder, gsd_str=composite_name)
         self.props_df_dataset = read_complete_grain_files(grain_file_list=grain_files)
         # concatenated dataframe of all images
         self.df_props = pd.concat(self.props_df_dataset)
         self._update_combobox_props(self.df_props.columns)
-        self._on_select_prop_to_plot(plot_type='multi')
+        self._on_select_prop_to_plot()
 
     def _on_load_grainsize_image(self, event=None):
         
+        self.plot_type = 'single'
         composite_name = self.qtext_model_str.text() + self.qtext_mask_str.text()
         grain_files = data_loader.load_grain_set(file_dir=self.mask_folder, gsd_str=composite_name)
         grain_files = [x for x in grain_files if Path(self.image_name).stem in x]
@@ -275,13 +279,13 @@ class ImageGrainStatsWidget(QWidget):
         # concatenated dataframe of all images
         self.df_props = pd.concat(self.props_df_dataset)
         self._update_combobox_props(self.df_props.columns)
-        self._on_select_prop_to_plot(plot_type='singke')
+        self._on_select_prop_to_plot()
 
 
-    def _on_select_prop_to_plot(self, event=None, plot_type='single'):
+    def _on_select_prop_to_plot(self, event=None):
 
         self.axes.clear()
-        if plot_type == 'multi':
+        if self.plot_type == 'multi':
             sns.histplot(data=self.df_props, x=self.combobox_prop_to_plot.value, ax=self.axes)
         else:
             sns.histplot(data=self.props_df_image, x=self.combobox_prop_to_plot.value, ax=self.axes)
