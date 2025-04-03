@@ -169,6 +169,8 @@ class ImageGrainProcWidget(QWidget):
         self.perf_folder_group.glayout.addWidget(self.perf_pred_directory.native, 0, 1, 1, 1)
         self.perf_folder_group.glayout.addWidget(QLabel("Pick mask folder"), 1, 0, 1, 1)
         self.perf_folder_group.glayout.addWidget(self.perf_mask_directory.native, 1, 1, 1, 1)
+        self.perf_folder_group.gbox.setMaximumHeight(self.perf_folder_group.gbox.sizeHint().height())
+
 
         ### Plotting
         self.mpl_widget = NapariMPLWidget(viewer)
@@ -190,6 +192,9 @@ class ImageGrainProcWidget(QWidget):
         self.qtext_pred_str = QLineEdit("_pred")
         self.perf_options_group.glayout.addWidget(QLabel("Prediction string"), 1, 0, 1,1)
         self.perf_options_group.glayout.addWidget(self.qtext_pred_str, 1, 1, 1, 1)
+
+        self.perf_options_group.gbox.setMaximumHeight(self.perf_options_group.gbox.sizeHint().height())
+
 
         self.add_connections()
 
