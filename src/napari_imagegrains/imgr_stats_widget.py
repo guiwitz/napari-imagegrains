@@ -396,7 +396,9 @@ class ImageGrainStatsWidget(QWidget):
         self.grainsize_axes.clear()
         colors = plt.cm.tab10(np.linspace(0, 1, len(gsd_l)))
         for gsd, id, c in zip(gsd_l, id_l, colors):
-            plotting.plot_gsd(gsd=gsd, ax=self.grainsize_axes, gsd_id=id, color=c)
+            plotting.plot_gsd(gsd=gsd, ax=self.grainsize_axes, gsd_id=id, color=c, label_axes=True)
+        
+        self.grainsize_axes.set_title(f'Grain size distribution for {self.mask_folder.name}', fontsize=12, color='white')
         self.grainsize_axes.tick_params(axis='both', colors='white')
         self.grainsize_axes.xaxis.label.set_color('white')
         self.grainsize_axes.yaxis.label.set_color('white')
@@ -420,7 +422,9 @@ class ImageGrainStatsWidget(QWidget):
         #idx = id_l.index(mask_name)
 
         self.grainsize_axes.clear()
-        plotting.plot_gsd(gsd=gsd_l[idx], ax=self.grainsize_axes)
+        plotting.plot_gsd(gsd=gsd_l[idx], ax=self.grainsize_axes,
+                          label_axes=True)
+        self.grainsize_axes.set_title(f'Grain size distribution for {id_l[idx]}', fontsize=12, color='white')
         self.grainsize_axes.tick_params(axis='both', colors='white')
         self.grainsize_axes.xaxis.label.set_color('white')
         self.grainsize_axes.yaxis.label.set_color('white')
