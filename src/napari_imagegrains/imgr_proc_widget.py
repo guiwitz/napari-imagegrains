@@ -4,6 +4,7 @@ os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
 from typing import TYPE_CHECKING
 from pathlib import Path
+import webbrowser
 
 from qtpy.QtWidgets import QVBoxLayout, QTabWidget, QPushButton, QWidget, QFileDialog,  QLineEdit, QGroupBox, QHBoxLayout, QGridLayout, QLabel, QCheckBox, QProgressBar, QRadioButton, QMessageBox
 
@@ -59,7 +60,9 @@ class ImageGrainProcWidget(QWidget):
         self._segmentation_layout.addWidget(self.model_download_group.gbox)
 
         ##### Elements "Download models" #####
-        self.lbl_select_model_for_download = QLabel("Model URL (Github or Zenodo)")
+        self.lbl_select_model_for_download = QLabel("Model URL")
+        self.btn_goto_zenodo = QPushButton("Zenodo")
+        self.btn_goto_zenodo.setToolTip("Go to https://zenodo.org/")
         self.repo_model_path_display = QLineEdit("No URL")
         self.lbl_select_directory_for_download = QLabel("Download model to directory")
         # self.local_directory_model_path_display = QLineEdit("No local path")
@@ -68,11 +71,12 @@ class ImageGrainProcWidget(QWidget):
         self.btn_download_model.setToolTip("Add URL to model repo and click to download models")
 
         self.model_download_group.glayout.addWidget(self.lbl_select_model_for_download, 0, 0, 1, 1)
-        self.model_download_group.glayout.addWidget(self.repo_model_path_display,  0, 1, 1, 1)
+        self.model_download_group.glayout.addWidget(self.btn_goto_zenodo,  0, 1, 1, 1)
+        self.model_download_group.glayout.addWidget(self.repo_model_path_display,  0, 2, 1, 1)
         self.model_download_group.glayout.addWidget(self.lbl_select_directory_for_download, 1, 0, 1, 1)
         # self.model_download_group.glayout.addWidget(self.local_directory_model_path_display,  1, 1, 1, 1)
-        self.model_download_group.glayout.addWidget(self.local_directory_model_path_display.native,  1, 1, 1, 1)
-        self.model_download_group.glayout.addWidget(self.btn_download_model, 2, 0, 1, 2)
+        self.model_download_group.glayout.addWidget(self.local_directory_model_path_display.native,  1, 1, 1, 2)
+        self.model_download_group.glayout.addWidget(self.btn_download_model, 2, 0, 1, 3)
 
 
         ### Elements "Model selection" ###
@@ -132,12 +136,12 @@ class ImageGrainProcWidget(QWidget):
         self.segmentation_option_group.glayout.addWidget(self.radio_segment_tiffs, 2, 0, 1, 1)
         self.check_use_gpu = QCheckBox('Use GPU')
         self.segmentation_option_group.glayout.addWidget(self.check_use_gpu, 0, 1, 1, 1)
-        self.check_save_mask = QCheckBox('Save pred(s)')
+        self.check_save_mask = QCheckBox('Save prediction(s)')
         self.segmentation_option_group.glayout.addWidget(self.check_save_mask, 1, 1, 1, 1)
-        self.check_load_saved_prediction_mask = QCheckBox('Load pred(s)')
+        self.check_load_saved_prediction_mask = QCheckBox('Load prediction(s)')
         self.segmentation_option_group.glayout.addWidget(self.check_load_saved_prediction_mask, 2, 1, 1, 1)
         self.pred_directory = create_widget(value=Path("No local path"), options={"mode": "d", "label": "Choose a directory"})
-        self.segmentation_option_group.glayout.addWidget(QLabel("Save preds to"), 3, 0, 1, 1)
+        self.segmentation_option_group.glayout.addWidget(QLabel("Save prediction(s) to"), 3, 0, 1, 1)
         self.segmentation_option_group.glayout.addWidget(self.pred_directory.native, 3, 1, 1, 1)
 
 
@@ -207,6 +211,7 @@ class ImageGrainProcWidget(QWidget):
         '''Connects GUI elements with execution functions.'''
 
         self.check_download_model.stateChanged.connect(self._on_check_toggle_visibility)
+        self.btn_goto_zenodo.clicked.connect(self._on_click_goto_zenodo)
         self.btn_download_model.clicked.connect(self._on_click_download_model)
         self.image_list.currentItemChanged.connect(self._on_select_image)
         self.model_list.currentItemChanged.connect(self._on_select_model)
@@ -219,13 +224,16 @@ class ImageGrainProcWidget(QWidget):
         self.btn_compute_performance_folder.clicked.connect(self._on_click_compute_performance_folder)
         self.btn_save_average_precision.clicked.connect(self._on_save_average_precision)
 
-    
+    def _on_click_goto_zenodo(self):
+        zenodo_url = "https://zenodo.org/records/8005771"
+        webbrowser.open(zenodo_url)
+
     def _on_click_download_model(self):
         """Downloads models from Github"""
 
         if self.repo_model_path_display.text() == "No URL":
             return False
-        #if self.local_directory_model_path_display.text() == "No local path":
+
         if self.local_directory_model_path_display.value == "No local path":
              return False 
         
@@ -233,15 +241,44 @@ class ImageGrainProcWidget(QWidget):
         if "github.com" in self.model_url_user:
             self.model_url_processed = self.model_url_user.replace("github.com", "raw.githubusercontent.com").replace("blob/", "")
             self.model_name = (self.model_url_processed.split("/")[-1])
-            # self.model_save_path = self.local_directory_model_path_display.text()
             self.model_save_path = self.local_directory_model_path_display.value
-
             content_in_bytes = requests.get(str(self.model_url_processed)).content
             assert type(content_in_bytes) is bytes
             with open(str(Path(self.model_save_path).joinpath(self.model_name)), 'wb') as f_out:
                 f_out.write(content_in_bytes)
+
+        # preliminary download code for zenodo models
+        # must be tested with David's models on zenodo
+        # downloads all files with a certain extension         
+        elif "zenodo.org" in self.model_url_user:
+            self.model_save_path = self.local_directory_model_path_display.value
+            self.model_url_processed = self.model_url_user.replace("zenodo.org/records", "zenodo.org/api/records/")
+            self.model_file_extension = ".lsm"
+            try:
+                response = requests.get(self.model_url_processed)
+                response.raise_for_status()
+            except requests.exceptions.RequestException as e:
+                print(f"{e}")
+
+            data = response.json()
+            files = data.get("files", [])
+
+            for file in files:
+                self.model_name = file["key"]
+                self.model_actual_url = file["links"]["self"]
+                if self.model_file_extension is None or self.model_name.lower().endswith(self.model_file_extension.lower()):
+                    try:
+                        r = requests.get(self.model_actual_url, stream=True)
+                        r.raise_for_status()
+
+                        file_path = os.path.join(self.model_save_path, self.model_name)
+                        with open(file_path, "wb") as f:
+                            for chunk in r.iter_content(chunk_size=8192): # file is downloaded in chunks of 8192 bytes (8kb)
+                                f.write(chunk)
+                    except requests.exceptions.RequestException as e:
+                        print(f"{e}")
         else:
-            self.notify_user("Message", "So far, model to be downloaded needs to be on Github.")
+            self.notify_user("Message", "So far, model to be downloaded needs to be on Zenodo or on Github.")
 
 
     def _on_click_select_image_folder(self):
