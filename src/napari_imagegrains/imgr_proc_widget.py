@@ -6,7 +6,10 @@ from typing import TYPE_CHECKING
 from pathlib import Path
 import webbrowser
 
+from qtpy.QtCore import Qt
 from qtpy.QtWidgets import QVBoxLayout, QTabWidget, QPushButton, QWidget, QFileDialog,  QLineEdit, QGroupBox, QHBoxLayout, QGridLayout, QLabel, QCheckBox, QProgressBar, QRadioButton, QMessageBox
+from superqt import QLabeledSlider
+from qtpy.QtWidgets import QSizePolicy
 
 from imagegrains.segmentation_helper import eval_set
 from imagegrains import data_loader, plotting
@@ -88,7 +91,7 @@ class ImageGrainProcWidget(QWidget):
         self.model_selection_group.glayout.addWidget(self.btn_select_model_folder, 0, 0, 1, 2)
 
         ##### Elements "Model list" #####
-        self.model_list = FolderList(viewer, file_extensions=['.170223'])
+        self.model_list = FolderList(viewer)
         self.model_selection_group.glayout.addWidget(self.model_list, 1, 0, 1, 2)
 
 
@@ -100,7 +103,7 @@ class ImageGrainProcWidget(QWidget):
         self.image_group.glayout.addWidget(self.btn_select_image_folder)
 
         ##### Elements "Image list" #####
-        self.image_list = FolderList(viewer, file_extensions=['.png', '.jpg', '.tif'])
+        self.image_list = FolderList(viewer)
         self.image_group.glayout.addWidget(self.image_list)
 
 
@@ -127,6 +130,7 @@ class ImageGrainProcWidget(QWidget):
         ### Elements "Segmentation options" ###
         self.segmentation_option_group = VHGroup('Segmentation options', orientation='G')
         self._segmentation_layout.addWidget(self.segmentation_option_group.gbox)
+
         self.radio_segment_jpgs = QRadioButton('Segment .jpg')
         self.radio_segment_jpgs.setChecked(True)
         self.segmentation_option_group.glayout.addWidget(self.radio_segment_jpgs, 0, 0, 1, 1)
@@ -134,15 +138,30 @@ class ImageGrainProcWidget(QWidget):
         self.segmentation_option_group.glayout.addWidget(self.radio_segment_pngs, 1, 0, 1, 1)
         self.radio_segment_tiffs = QRadioButton('Segment .tif')
         self.segmentation_option_group.glayout.addWidget(self.radio_segment_tiffs, 2, 0, 1, 1)
+
         self.check_use_gpu = QCheckBox('Use GPU')
         self.segmentation_option_group.glayout.addWidget(self.check_use_gpu, 0, 1, 1, 1)
         self.check_save_mask = QCheckBox('Save prediction(s)')
         self.segmentation_option_group.glayout.addWidget(self.check_save_mask, 1, 1, 1, 1)
         self.check_load_saved_prediction_mask = QCheckBox('Load prediction(s)')
         self.segmentation_option_group.glayout.addWidget(self.check_load_saved_prediction_mask, 2, 1, 1, 1)
+
         self.pred_directory = create_widget(value=Path("No local path"), options={"mode": "d", "label": "Choose a directory"})
         self.segmentation_option_group.glayout.addWidget(QLabel("Save prediction(s) to"), 3, 0, 1, 1)
-        self.segmentation_option_group.glayout.addWidget(self.pred_directory.native, 3, 1, 1, 1)
+        self.segmentation_option_group.glayout.addWidget(self.pred_directory.native, 3, 1, 1, 2)
+
+        self.check_change_diameter = QCheckBox('Expected median diameter (px)')
+        self.check_change_diameter.setChecked(False)
+        self.segmentation_option_group.glayout.addWidget(self.check_change_diameter, 0, 2, 1, 1)
+
+        self.qls_expected_median_diameter = QLabeledSlider(Qt.Horizontal)
+        self.qls_expected_median_diameter.setRange(7, 27)
+        self.qls_expected_median_diameter.setValue(17)
+        self.qls_expected_median_diameter.setFixedWidth(200)
+        self.qls_expected_median_diameter.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self.expected_median_diameter = self.qls_expected_median_diameter.value()
+        self.qls_expected_median_diameter.setVisible(False)
+        self.segmentation_option_group.glayout.addWidget(self.qls_expected_median_diameter, 1, 2, 1, 1)
 
 
         ### Elements "Run segmentation" ###
@@ -223,10 +242,16 @@ class ImageGrainProcWidget(QWidget):
         self.btn_compute_performance_single_image.clicked.connect(self._on_click_compute_performance_single_image)
         self.btn_compute_performance_folder.clicked.connect(self._on_click_compute_performance_folder)
         self.btn_save_average_precision.clicked.connect(self._on_save_average_precision)
+        self.qls_expected_median_diameter.valueChanged.connect(self._on_slider_change)
+        self.check_change_diameter.stateChanged.connect(self._on_check_toggle_visibility)
+
 
     def _on_click_goto_zenodo(self):
+        """Opens a zenodo record"""
+
         zenodo_url = "https://zenodo.org/records/8005771"
         webbrowser.open(zenodo_url)
+
 
     def _on_click_download_model(self):
         """Downloads models from Github"""
@@ -294,9 +319,15 @@ class ImageGrainProcWidget(QWidget):
     def _on_click_select_model_folder(self):
         """Interactively select folder to analyze"""
 
-        model_folder = Path(str(QFileDialog.getExistingDirectory(self, "Select Directory")))
-        self.model_list.update_from_path(model_folder)
+        self.model_folder = Path(str(QFileDialog.getExistingDirectory(self, "Select Directory")))
+        self.model_list.update_from_path(self.model_folder)
         self.reset_channels = True
+    
+
+    def _on_slider_change(self, value):
+        """Reads the changed value of the expected median diameter slider"""
+
+        self.expected_median_diameter = value
     
 
     def _on_click_segment_single_image(self):
@@ -332,7 +363,7 @@ class ImageGrainProcWidget(QWidget):
                 img_id = Path(self.image_name).stem
                 MODEL_ID = Path(self.model_name).stem
 
-        self.mask_l, self.flow_l, self.styles_l, self.id_list, self.img_l = predict_single_image(image_path, model, mute=True, return_results=True, save_masks=SAVE_MASKS, tar_dir=TAR_DIR, model_id=MODEL_ID)
+        self.mask_l, self.flow_l, self.styles_l, self.id_list, self.img_l = predict_single_image(image_path, model, mute=True, return_results=True, save_masks=SAVE_MASKS, tar_dir=TAR_DIR, model_id=MODEL_ID, diameter=self.expected_median_diameter)
 
         self.viewer.add_labels(self.mask_l[0], name=f"{img_id}_{MODEL_ID}_pred")
         
@@ -409,7 +440,8 @@ class ImageGrainProcWidget(QWidget):
                 return_results=True,
                 save_masks=SAVE_MASKS,
                 tar_dir=TAR_DIR,
-                model_id=MODEL_ID)
+                model_id=MODEL_ID,
+                diameter=self.expected_median_diameter)
             self.viewer.open(path_images_in_folder.joinpath(img))
             self.viewer.add_labels(self.mask_l, name=f"{Path(img).stem}_{MODEL_ID}_pred")
             self.progress_bar.setValue(int((idx + 1) / len(img_list) * 100))
@@ -556,6 +588,13 @@ class ImageGrainProcWidget(QWidget):
             self.model_download_group.toggle_visibility('visible')
         else:
             self.model_download_group.toggle_visibility('invisible')
+
+        
+        if self.check_change_diameter.isChecked():
+            self.qls_expected_median_diameter.setVisible(True)
+        else:
+            self.qls_expected_median_diameter.setVisible(False)
+
 
 
 class VHGroup():
