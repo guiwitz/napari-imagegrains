@@ -1,4 +1,5 @@
 import os
+import napari
 
 from typing import TYPE_CHECKING
 
@@ -6,10 +7,13 @@ from qtpy.QtWidgets import QWidget, QVBoxLayout, QGroupBox, QHBoxLayout, QGridLa
 from magicgui.widgets import create_widget
 from pathlib import Path
 
+from .imgr_proc_widget import ImageGrainProcWidget
+
 from imagegrains import data_loader
 
-if TYPE_CHECKING:
-    import napari
+# if TYPE_CHECKING:
+#     import napari
+
 
 class ImageGrainDemoData(QWidget):
     def __init__(self, viewer: "napari.viewer.Viewer"):
@@ -52,6 +56,25 @@ class ImageGrainDemoData(QWidget):
                 os.makedirs(self.default_download_path)
         
         data_loader.download_files(self.custom_download_path)
+
+        viewer = napari.current_viewer()
+        self.widget = ImageGrainProcWidget(viewer=viewer)
+        viewer.window.add_dock_widget(self.widget)
+
+        self.widget.model_folder = Path(self.custom_download_path).joinpath("models")
+        self.widget.model_list.update_from_path(self.widget.model_folder)
+        self.widget.model_list.setCurrentRow(1)
+
+
+        self.widget.image_folder = Path(self.custom_download_path).joinpath("demo_data", "K1" )
+        self.widget.image_list.update_from_path(self.widget.image_folder)
+
+        self.widget.pred_directory.set_value(Path(self.custom_download_path).joinpath("demo_data", "K1" ))
+        self.widget.man_proc_directory.set_value(Path(self.custom_download_path).joinpath("demo_data", "K1" ))
+
+        #self.widget.perf_pred_directory.set_value('C:/Users/micha/imagegrains/demo_data/FH/test/')
+        #self.widget.perf_mask_directory.set_value('C:/Users/micha/imagegrains/demo_data/FH/test/')
+        self.widget.image_list.setCurrentRow(0)
 
 
 
