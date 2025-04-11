@@ -8,10 +8,12 @@ from ._reader import napari_get_reader
 from ._sample_data import make_sample_data
 from .imgr_proc_widget import ImageGrainProcWidget
 from .imgr_stats_widget import ImageGrainStatsWidget
+from .imgr_demodata_widget import ImageGrainDemoWidget
 
 __all__ = (
     "napari_get_reader",
     "make_sample_data",
     "ImageGrainProcWidget",
     "ImageGrainStatsWidget",
+    "ImageGrainDemoWidget",
 )

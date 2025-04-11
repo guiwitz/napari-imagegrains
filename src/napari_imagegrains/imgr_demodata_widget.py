@@ -15,7 +15,7 @@ from imagegrains import data_loader
 #     import napari
 
 
-class ImageGrainDemoData(QWidget):
+class ImageGrainDemoWidget(QWidget):
     def __init__(self, viewer: "napari.viewer.Viewer"):
         super().__init__()
 
