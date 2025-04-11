@@ -19,7 +19,7 @@ from napari_matplotlib.base import NapariMPLWidget
 
 from magicgui.widgets import create_widget
 import pandas as pd
-
+import numpy as np
 
 import warnings
 #warnings.filterwarnings("ignore")
@@ -43,6 +43,7 @@ class ImageGrainProcWidget(QWidget):
 
         # specifies whether current perf plot is for a dataset or a single image
         self.performance_plot_type = None
+        self.mAP = None
 
         self.main_layout = QVBoxLayout()
         self.setLayout(self.main_layout)
@@ -528,9 +529,26 @@ class ImageGrainProcWidget(QWidget):
             pred_str=self.qtext_pred_str.text()
             )
         evals = eval_set(imgs=imgs, lbls=lbls, preds=preds, save_results=True, tar_dir=self.perf_pred_directory.value)
+        # compute mAP
+        mAP = 0
+        for key, val in evals.items():
+            mAP += np.mean(val['ap']) / len(evals)
+            self.mAP = mAP
+        # plot       
         self.mpl_widget.canvas.figure
         self.axes.clear()
         plotting.AP_IoU_plot(evals, title='', ax=self.axes, fontcolor='white')
+
+        # add mAP
+        # Get bounding box of the legend in display coordinates (pixels)
+        bbox = self.axes.get_legend().get_window_extent()
+        bbox_fig = bbox.transformed(self.axes.transAxes.inverted())
+        x_center = bbox_fig.x0 + bbox_fig.width / 2
+        y_below = bbox_fig.y0 - 0.02
+        self.axes.text(x_center, y_below, f'mAP: {self.mAP:.2f}',
+                       fontsize=12, color='black', ha='center', va='top',
+                       transform=self.axes.transAxes)
+        
         self.mpl_widget.canvas.figure.canvas.draw()
         self.performance_plot_type = 'dataset'
 
@@ -553,9 +571,10 @@ class ImageGrainProcWidget(QWidget):
             filter_str=imgs[0].stem + "*" + self.qtext_pred_str.text())
 
         evals = eval_set(imgs=imgs, lbls=lbls, preds=preds, save_results=False)
+        self.mAP = np.mean(evals[0]['ap'])
         self.mpl_widget.canvas.figure
         self.axes.clear()
-        plotting.AP_IoU_plot(evals,title='', ax=self.axes, fontcolor='white')#,test_idxs=test_idxs1)
+        plotting.AP_IoU_plot(evals, title='', ax=self.axes, fontcolor='white')#,test_idxs=test_idxs1)
         # fix plot after creation. Ideally a single image plot function should
         # be added to the imagegrains library
         for line in self.axes.lines:
@@ -564,6 +583,15 @@ class ImageGrainProcWidget(QWidget):
         for col in self.axes.collections:
             if col.get_label() in ['1 Std. dev.']:
                 col.remove()
+        
+        bbox = self.axes.get_legend().get_window_extent()
+        bbox_fig = bbox.transformed(self.axes.transAxes.inverted())
+        x_center = bbox_fig.x0 + bbox_fig.width / 2
+        y_below = bbox_fig.y0 - 0.02
+        self.axes.text(x_center, y_below, f'mAP: {self.mAP:.2f}', 
+                       fontsize=12, color='black', ha='center', va='top',
+                       transform=self.axes.transAxes)
+
         self.axes.get_legend().remove()
         self.mpl_widget.canvas.figure.canvas.draw()
         self.performance_plot_type = 'single'
@@ -573,13 +601,14 @@ class ImageGrainProcWidget(QWidget):
         Save performance plot
         """
 
-        # save the figure
+        # set export name
         self.plot_white_black(color='black')
         export_name = ''
         if self.performance_plot_type == 'single':
             export_name = self.image_path.stem
         elif self.performance_plot_type == 'dataset':
             export_name = 'dataset'
+
         self.mpl_widget.canvas.figure.savefig(self.perf_pred_directory.value / f'performance_plot_{export_name}.png', dpi=300, bbox_inches='tight')
         self.plot_white_black(color='white')
         self.mpl_widget.canvas.figure.canvas.draw()
