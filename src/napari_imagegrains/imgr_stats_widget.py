@@ -2,7 +2,8 @@ from typing import TYPE_CHECKING
 from pathlib import Path
 import matplotlib.pyplot as plt
 
-from magicgui.widgets import create_widget
+from magicgui.widgets import create_widget, Table
+
 from qtpy.QtWidgets import (QPushButton, QWidget, QVBoxLayout, QTabWidget,
                             QLabel, QFileDialog, QLineEdit, QSizePolicy)
 import pandas as pd
@@ -30,15 +31,15 @@ class ImageGrainStatsWidget(QWidget):
 
         # df for current image
         self.props_df_image = None
-        # list of df per image
+        # df for all images
         self.props_df_dataset = None
-        # concatenated dataframe of all images
-        self.df_props = None
         # list of skimage.measure._regionprops.RegionProperties for current image
         self.props_image = None
         # list of list of skimage.measure._regionprops.RegionProperties for all images
         self.props_dataset = None
         self.file_ids = None
+        # displayble table
+        self.results_table = Table()
 
         self.main_layout = QVBoxLayout()
         self.setLayout(self.main_layout)
@@ -198,7 +199,7 @@ class ImageGrainStatsWidget(QWidget):
         self.btn_plot_single_image.clicked.connect(self._on_plot_single_image)
         self.combobox_prop_to_plot.changed.connect(self._on_select_prop_to_plot)
 
-        self.btn_load_grainsize.clicked.connect(self._on_load_grainsize)
+        self.btn_load_grainsize.clicked.connect(self._on_load_grainsize_dataset)
         self.btn_load_grainsize_image.clicked.connect(self._on_load_grainsize_image)
 
     def _on_select_image_folder(self):
@@ -217,11 +218,17 @@ class ImageGrainStatsWidget(QWidget):
         self.mask_list.update_from_path(self.mask_folder)
         self.reset_channels = True
 
+        self.reset_props()
+
+    def reset_props(self):
+
         # reset properties
+        self.props_df_image = None
         self.props_df_dataset = None
+        self.props_image = None
         self.props_dataset = None
         self.file_ids = None
-        self.df_props = None
+        self.results_table.clear()
 
         return self.mask_folder
 
@@ -232,10 +239,32 @@ class ImageGrainStatsWidget(QWidget):
         self.props_df_dataset, self.props_dataset, self.file_ids = grainsizing.grains_in_dataset(
             data_dir=self.mask_folder, mask_str=composite_name, return_results=True)
         
-        self.df_props = pd.concat(self.props_df_dataset)
-        self._update_combobox_props(self.df_props.columns)
-        self._update_combobox_props_for_size(self.df_props.columns)
+        for ind, x in enumerate(self.props_df_dataset):
+            x['file_id'] = self.file_ids[ind]
+        self.props_df_dataset = pd.concat(self.props_df_dataset)
+        
+        self._update_combobox_props(self.props_df_dataset.drop(columns='file_id').columns)
+        self._update_combobox_props_for_size(self.props_df_dataset.drop(columns='file_id').columns)
         self._on_select_prop_to_plot()
+
+
+    def create_table_widget(self, dataframe):
+        if self.results_table is None: 
+            self.results_table = Table(
+                value=dataframe, name="Properties Table"
+            )
+        else:
+            self.results_table.clear()
+            self.results_table.set_value(dataframe)
+        self.results_table.native.clicked.connect(self.clicked_table)
+        self.results_table.read_only = True
+        self.results_table.show()
+
+    def clicked_table(self, event=None):
+        if "label" in self.results_table.column_headers:
+            row = self.results_table.native.currentRow()
+            label = int(self.results_table["label"][row])
+            self.mask_layer.selected_label = label
         
         
     def _update_combobox_props(self, newprops):
@@ -253,9 +282,12 @@ class ImageGrainStatsWidget(QWidget):
 
         self.plot_type = 'single'
         self.props_df_image, self.props_image = grainsizing.grains_from_masks(
-            masks=self.viewer.layers[Path(self.mask_path).stem].data)
+            masks=self.mask_layer.data)
         self._update_combobox_props(self.props_df_image.columns)
         self._update_combobox_props_for_size(self.props_df_image.columns)
+
+        self.mask_layer.properties = self.props_df_image
+        self.create_table_widget(self.props_df_image)
         
         self.axes.clear()
         sns.histplot(data=self.props_df_image, x='area', ax=self.axes)
@@ -264,16 +296,21 @@ class ImageGrainStatsWidget(QWidget):
         self.axes.yaxis.label.set_color('white') 
         self.mpl_widget.canvas.figure.canvas.draw()
 
-    def _on_load_grainsize(self, event=None):
+    def _on_load_grainsize_dataset(self, event=None):
         
         self.plot_type = 'multi'
         composite_name = self.qtext_model_str.text() + self.qtext_mask_str.text()
-        grain_files = data_loader.load_grain_set(file_dir=self.mask_folder, gsd_str=composite_name)
-        self.props_df_dataset = read_complete_grain_files(grain_file_list=grain_files)
-        # concatenated dataframe of all images
-        self.df_props = pd.concat(self.props_df_dataset)
-        self._update_combobox_props(self.df_props.columns)
-        self._update_combobox_props_for_size(self.df_props.columns)
+        self.grain_files = data_loader.load_grain_set(file_dir=self.mask_folder, gsd_str=composite_name)
+        self.props_df_dataset = read_complete_grain_files(grain_file_list=self.grain_files)
+        
+        for ind, x in enumerate(self.props_df_dataset):
+            x['file_id'] = Path(self.grain_files[ind]).stem
+        self.props_df_dataset = pd.concat(self.props_df_dataset)
+        if 'Unnamed: 0' in self.props_df_dataset.columns:
+            self.props_df_dataset.drop(columns='Unnamed: 0', inplace=True)
+        
+        self._update_combobox_props(self.props_df_dataset.drop(columns='file_id').columns)
+        self._update_combobox_props_for_size(self.props_df_dataset.drop(columns='file_id').columns)
         self._on_select_prop_to_plot()
 
     def _on_load_grainsize_image(self, event=None):
@@ -289,6 +326,9 @@ class ImageGrainStatsWidget(QWidget):
             raise ValueError(f'Multiple grain files found for image {self.image_name}')
         
         self.props_df_image = read_complete_grain_files(grain_file_list=grain_files)[0]
+        self.mask_layer.properties = self.props_df_image
+        self.create_table_widget(self.props_df_image)
+
         # concatenated dataframe of all images
         self._update_combobox_props(self.props_df_image.columns)
         self._update_combobox_props_for_size(self.props_df_image.columns)
@@ -299,7 +339,7 @@ class ImageGrainStatsWidget(QWidget):
 
         self.axes.clear()
         if self.plot_type == 'multi':
-            sns.histplot(data=self.df_props, x=self.combobox_prop_to_plot.value, ax=self.axes)
+            sns.histplot(data=self.props_df_dataset, x=self.combobox_prop_to_plot.value, ax=self.axes)
         else:
             sns.histplot(data=self.props_df_image, x=self.combobox_prop_to_plot.value, ax=self.axes)
         
@@ -318,6 +358,13 @@ class ImageGrainStatsWidget(QWidget):
         if not success:
             return False
         else:
+            self.results_table.clear()
+            if self.props_df_dataset is not None:
+                ref_files = self.props_df_dataset['file_id'].unique()
+                index = find_matching_data_index(self.image_path, ref_files)
+                self.props_df_image = self.props_df_dataset[self.props_df_dataset['file_id'] == ref_files[index[0]]]
+                self.create_table_widget(self.props_df_image)
+
             # find mask corresponding to image
             self.mask_path = None
             self.mask_path = find_match_in_folder(
@@ -327,6 +374,7 @@ class ImageGrainStatsWidget(QWidget):
                 data_str=self.qtext_mask_str.text(),
                 data_format='tif')
             self.open_mask()
+
             return self.image_path
         
         
@@ -354,7 +402,7 @@ class ImageGrainStatsWidget(QWidget):
 
         if self.mask_path is None:
             return False
-        self.viewer.open(self.mask_path, layer_type='labels')
+        self.mask_layer = self.viewer.open(self.mask_path, layer_type='labels')[0]
 
 
     def _on_display_fit(self):
@@ -448,7 +496,7 @@ class ImageGrainStatsWidget(QWidget):
 
         self.grainsize_axes.clear()
         plotting.plot_gsd(gsd=gsd_l[idx], ax=self.grainsize_axes,
-                          label_axes=True)
+                          label_axes=True, length_max=np.max(gsd_l[idx]))
         self.grainsize_axes.set_title(f'Grain size distribution for {id_l[idx]}', fontsize=12, color='white')
         self.grainsize_axes.tick_params(axis='both', colors='white')
         self.grainsize_axes.xaxis.label.set_color('white')
