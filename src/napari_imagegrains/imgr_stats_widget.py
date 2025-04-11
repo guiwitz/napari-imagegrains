@@ -341,16 +341,23 @@ class ImageGrainStatsWidget(QWidget):
         self.combobox_props_for_size.choices = newprops
         self.combobox_props_for_size.changed.connect(self._on_select_prop_to_plot)
 
+    def get_grain_files(self):
+        """Find the appropraite grain file given: 1. mask and model string, 2. a folder
+        containing the grain files, 3. the information whether the grain files are scaled or not."""
+
+        composite_name = self.qtext_model_str.text() + self.qtext_mask_str.text() + '_grains'
+        grain_files = data_loader.load_grain_set(file_dir=self.mask_folder, gsd_str=composite_name)
+        if self.check_scale.isChecked():
+            grain_files = [x for x in grain_files if 're_scaled' in Path(x).stem]
+        else:
+            grain_files = [x for x in grain_files if 're_scaled' not in Path(x).stem]
+
+        return grain_files
 
     def _on_load_grainsize_dataset(self, event=None):
         
         self.plot_type = 'multi'
-        composite_name = self.qtext_model_str.text() + self.qtext_mask_str.text() + '_grains'
-        self.grain_files = data_loader.load_grain_set(file_dir=self.mask_folder, gsd_str=composite_name)
-        if self.check_scale.isChecked():
-            self.grain_files = [x for x in self.grain_files if 're_scaled' in Path(x).stem]
-        else:
-            self.grain_files = [x for x in self.grain_files if 're_scaled' not in Path(x).stem]
+        self.grain_files = self.get_grain_files()
         
         self.props_df_dataset = read_complete_grain_files(grain_file_list=self.grain_files)
         
@@ -516,12 +523,7 @@ class ImageGrainStatsWidget(QWidget):
     def _on_plot_dataset(self):
 
         column = self.combobox_props_for_size.value
-        composite_name = self.qtext_model_str.text() + self.qtext_mask_str.text() + '_grains'
-        self.grain_files = data_loader.load_grain_set(file_dir=self.mask_folder, gsd_str=composite_name)
-        if self.check_scale.isChecked():
-            self.grain_files = [x for x in self.grain_files if 're_scaled' in Path(x).stem]
-        else:
-            self.grain_files = [x for x in self.grain_files if 're_scaled' not in Path(x).stem]
+        self.grain_files = self.get_grain_files()
         gsd_l, id_l = grainsizing.gsd_for_set(gsds=self.grain_files, column=column)
 
         self.grainsize_axes.clear()
@@ -541,12 +543,7 @@ class ImageGrainStatsWidget(QWidget):
     def _on_plot_single_image(self):
 
         column = self.combobox_props_for_size.value
-        composite_name = self.qtext_model_str.text() + self.qtext_mask_str.text() + '_grains'
-        self.grain_files = data_loader.load_grain_set(file_dir=self.mask_folder, gsd_str=composite_name)
-        if self.check_scale.isChecked():
-            self.grain_files = [x for x in self.grain_files if 're_scaled' in Path(x).stem]
-        else:
-            self.grain_files = [x for x in self.grain_files if 're_scaled' not in Path(x).stem]
+        self.grain_files = self.get_grain_files()
         gsd_l, id_l = grainsizing.gsd_for_set(gsds=self.grain_files, column=column)
 
         idx = find_matching_data_index(self.image_path, id_l)
