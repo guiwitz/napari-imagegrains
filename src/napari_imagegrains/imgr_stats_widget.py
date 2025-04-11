@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from magicgui.widgets import create_widget, Table
 
 from qtpy.QtWidgets import (QPushButton, QWidget, QVBoxLayout, QTabWidget,
-                            QLabel, QFileDialog, QLineEdit, QSizePolicy)
+                            QLabel, QFileDialog, QLineEdit, QDoubleSpinBox, QCheckBox)
 import pandas as pd
 import seaborn as sns
 import numpy as np
@@ -15,6 +15,7 @@ from .imgr_proc_widget import VHGroup
 from .folder_list_widget import FolderList
 from .utils import find_match_in_folder, find_matching_data_index, read_complete_grain_files
 from imagegrains import grainsizing, data_loader, plotting
+from imagegrains.grainsizing import scale_grains
 
 if TYPE_CHECKING:
     import napari
@@ -143,6 +144,21 @@ class ImageGrainStatsWidget(QWidget):
                                                 widget_type='ComboBox')
         self.analysis_group.glayout.addWidget(self.combobox_prop_to_plot.native, 4, 0, 1, 1)
 
+        self.check_scale = QCheckBox("Scale")
+        self.check_scale.setToolTip("Scale image")
+        self.check_scale.setChecked(False)
+        self.analysis_group.glayout.addWidget(self.check_scale, 5, 0, 1, 1)
+
+        self.spinbox_scale = QDoubleSpinBox()
+        self.spinbox_scale.setToolTip("Indicate conversion factor from pixel to mm")
+        self.spinbox_scale.setDecimals(4)
+        self.spinbox_scale.setRange(0.0, 1000)
+        self.spinbox_scale.setSingleStep(0.0001)
+        self.spinbox_scale.setValue(1)
+        self.spinbox_scale.setSuffix(" px/mm")
+        self.spinbox_scale.setEnabled(False)
+        self.analysis_group.glayout.addWidget(self.spinbox_scale, 5, 1, 1, 1)
+
         ### Elements "Display fit"
         self.displayfit_group = VHGroup('Display fit', orientation='G')
         self._properties_layout.addWidget(self.displayfit_group.gbox)
@@ -194,6 +210,7 @@ class ImageGrainStatsWidget(QWidget):
         self.btn_select_image_folder.clicked.connect(self._on_select_image_folder)
         self.btn_run_grainsize_on_folder.clicked.connect(self._on_run_grainsize_on_folder)
         self.btn_run_grainsize_on_image.clicked.connect(self._on_run_grainsize_on_image)
+        self.check_scale.toggled.connect(self.spinbox_scale.setEnabled)
         self.btn_display_fit.clicked.connect(self._on_display_fit)
         self.btn_plot_dataset.clicked.connect(self._on_plot_dataset)
         self.btn_plot_single_image.clicked.connect(self._on_plot_single_image)
@@ -239,6 +256,14 @@ class ImageGrainStatsWidget(QWidget):
         self.props_df_dataset, self.props_dataset, self.file_ids = grainsizing.grains_in_dataset(
             data_dir=self.mask_folder, mask_str=composite_name, return_results=True)
         
+        if self.check_scale.isChecked():
+            for ind in range(len(self.props_df_dataset)):
+                scale = self.spinbox_scale.value()
+                self.props_df_dataset[ind] = scale_grains(
+                    self.props_df_dataset[ind], resolution=scale, 
+                    tar_dir=self.mask_folder, gsd_path=self.file_ids[ind]+'_grains',
+                    return_results=True)
+        
         for ind, x in enumerate(self.props_df_dataset):
             x['file_id'] = self.file_ids[ind]
         self.props_df_dataset = pd.concat(self.props_df_dataset)
@@ -247,6 +272,45 @@ class ImageGrainStatsWidget(QWidget):
         self._update_combobox_props_for_size(self.props_df_dataset.drop(columns='file_id').columns)
         self._on_select_prop_to_plot()
 
+    def _on_run_grainsize_on_image(self, event=None):
+
+        self.plot_type = 'single'
+        self.props_df_image, self.props_image = grainsizing.grains_from_masks(
+            masks=self.mask_layer.data)
+        
+        if self.check_scale.isChecked():
+            self.props_df_image = scale_grains(
+                    self.props_df_image, resolution=self.spinbox_scale.value(),
+                    file_id='rescaled', save_gsds=False, return_results=True)
+                
+        self._update_combobox_props(self.props_df_image.columns)
+        self._update_combobox_props_for_size(self.props_df_image.columns)
+        self._on_select_prop_to_plot()
+
+        self.mask_layer.properties = self.props_df_image
+        self.create_table_widget(self.props_df_image)
+        
+        '''self.axes.clear()
+        sns.histplot(data=self.props_df_image, x='area', ax=self.axes)
+        self.axes.tick_params(axis='both', colors='white')
+        self.axes.xaxis.label.set_color('white')
+        self.axes.yaxis.label.set_color('white') 
+        self.mpl_widget.canvas.figure.canvas.draw()'''
+
+    def _add_scaled_columns(self):
+        
+        if self.check_scale.isChecked():
+            scale = self.spinbox_scale.value()
+            for col in ['area', 'ell: b-axis (px)', 'ell: a-axis (px)']:
+                if self.props_df_image is not None:
+                    self.props_df_image[col.replace('px', 'mm')] = scale * self.props_df_image[col]
+                if self.props_df_dataset is not None:
+                    self.props_df_dataset[col.replace('px', 'mm')] = scale * self.props_df_dataset[col]
+        '''else:
+            for col in self.props_df_image.columns:
+                if 'mm' in col:
+                    self.props_df_image[col.replace('mm', 'px')] = self.props_df_image[col] * scale
+                    self.props_df_image.rename(columns={col: col.replace('mm', 'px')}, inplace=True)'''
 
     def create_table_widget(self, dataframe):
         if self.results_table is None: 
@@ -278,29 +342,16 @@ class ImageGrainStatsWidget(QWidget):
         self.combobox_props_for_size.changed.connect(self._on_select_prop_to_plot)
 
 
-    def _on_run_grainsize_on_image(self, event=None):
-
-        self.plot_type = 'single'
-        self.props_df_image, self.props_image = grainsizing.grains_from_masks(
-            masks=self.mask_layer.data)
-        self._update_combobox_props(self.props_df_image.columns)
-        self._update_combobox_props_for_size(self.props_df_image.columns)
-
-        self.mask_layer.properties = self.props_df_image
-        self.create_table_widget(self.props_df_image)
-        
-        self.axes.clear()
-        sns.histplot(data=self.props_df_image, x='area', ax=self.axes)
-        self.axes.tick_params(axis='both', colors='white')
-        self.axes.xaxis.label.set_color('white')
-        self.axes.yaxis.label.set_color('white') 
-        self.mpl_widget.canvas.figure.canvas.draw()
-
     def _on_load_grainsize_dataset(self, event=None):
         
         self.plot_type = 'multi'
-        composite_name = self.qtext_model_str.text() + self.qtext_mask_str.text()
+        composite_name = self.qtext_model_str.text() + self.qtext_mask_str.text() + '_grains'
         self.grain_files = data_loader.load_grain_set(file_dir=self.mask_folder, gsd_str=composite_name)
+        if self.check_scale.isChecked():
+            self.grain_files = [x for x in self.grain_files if 're_scaled' in Path(x).stem]
+        else:
+            self.grain_files = [x for x in self.grain_files if 're_scaled' not in Path(x).stem]
+        
         self.props_df_dataset = read_complete_grain_files(grain_file_list=self.grain_files)
         
         for ind, x in enumerate(self.props_df_dataset):
@@ -316,9 +367,13 @@ class ImageGrainStatsWidget(QWidget):
     def _on_load_grainsize_image(self, event=None):
         
         self.plot_type = 'single'
-        composite_name = self.qtext_model_str.text() + self.qtext_mask_str.text()
+        composite_name = self.qtext_model_str.text() + self.qtext_mask_str.text() + '_grains'
         grain_files = data_loader.load_grain_set(file_dir=self.mask_folder, gsd_str=composite_name)
         grain_files = [x for x in grain_files if Path(self.image_name).stem in x]
+        if self.check_scale.isChecked():
+            self.grain_files = [x for x in self.grain_files if 're_scaled' in Path(x).stem]
+        else:
+            self.grain_files = [x for x in self.grain_files if 're_scaled' not in Path(x).stem]
         
         if len(grain_files) == 0:
             raise ValueError(f'No grain file found for image {self.image_name}')
@@ -461,8 +516,13 @@ class ImageGrainStatsWidget(QWidget):
     def _on_plot_dataset(self):
 
         column = self.combobox_props_for_size.value
-        grain_files = data_loader.load_grain_set(file_dir=self.mask_folder, gsd_str=self.qtext_model_str.text())
-        gsd_l, id_l = grainsizing.gsd_for_set(gsds=grain_files, column=column)
+        composite_name = self.qtext_model_str.text() + self.qtext_mask_str.text() + '_grains'
+        self.grain_files = data_loader.load_grain_set(file_dir=self.mask_folder, gsd_str=composite_name)
+        if self.check_scale.isChecked():
+            self.grain_files = [x for x in self.grain_files if 're_scaled' in Path(x).stem]
+        else:
+            self.grain_files = [x for x in self.grain_files if 're_scaled' not in Path(x).stem]
+        gsd_l, id_l = grainsizing.gsd_for_set(gsds=self.grain_files, column=column)
 
         self.grainsize_axes.clear()
         colors = plt.cm.tab10(np.linspace(0, 1, len(gsd_l)))
@@ -471,6 +531,7 @@ class ImageGrainStatsWidget(QWidget):
                               color=c, label_axes=True, length_max=np.max(gsd_l))
         
         self.grainsize_axes.set_title(f'Grain size distribution for {self.mask_folder.name}', fontsize=12, color='white')
+        self.grainsize_axes.set_xlabel(f'Grain size {column}', fontsize=10, color='white')
         self.grainsize_axes.tick_params(axis='both', colors='white')
         self.grainsize_axes.xaxis.label.set_color('white')
         self.grainsize_axes.yaxis.label.set_color('white')
@@ -480,8 +541,13 @@ class ImageGrainStatsWidget(QWidget):
     def _on_plot_single_image(self):
 
         column = self.combobox_props_for_size.value
-        grain_files = data_loader.load_grain_set(file_dir=self.mask_folder, gsd_str=self.qtext_model_str.text())
-        gsd_l, id_l = grainsizing.gsd_for_set(gsds=grain_files, column=column)
+        composite_name = self.qtext_model_str.text() + self.qtext_mask_str.text() + '_grains'
+        self.grain_files = data_loader.load_grain_set(file_dir=self.mask_folder, gsd_str=composite_name)
+        if self.check_scale.isChecked():
+            self.grain_files = [x for x in self.grain_files if 're_scaled' in Path(x).stem]
+        else:
+            self.grain_files = [x for x in self.grain_files if 're_scaled' not in Path(x).stem]
+        gsd_l, id_l = grainsizing.gsd_for_set(gsds=self.grain_files, column=column)
 
         idx = find_matching_data_index(self.image_path, id_l)
         if len(idx) == 0:
@@ -498,6 +564,7 @@ class ImageGrainStatsWidget(QWidget):
         plotting.plot_gsd(gsd=gsd_l[idx], ax=self.grainsize_axes,
                           label_axes=True, length_max=np.max(gsd_l[idx]))
         self.grainsize_axes.set_title(f'Grain size distribution for {id_l[idx]}', fontsize=12, color='white')
+        self.grainsize_axes.set_xlabel(f'Grain size {column}', fontsize=10, color='white')
         self.grainsize_axes.tick_params(axis='both', colors='white')
         self.grainsize_axes.xaxis.label.set_color('white')
         self.grainsize_axes.yaxis.label.set_color('white')
