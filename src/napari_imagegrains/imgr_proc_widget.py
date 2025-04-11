@@ -85,6 +85,13 @@ class ImageGrainProcWidget(QWidget):
         self.model_download_group.glayout.addWidget(self.local_directory_model_path_display.native,  1, 1, 1, 2)
         self.model_download_group.glayout.addWidget(self.btn_download_model, 2, 0, 1, 3)
 
+        label_widget = QLabel('<a href="https://github.com/dmair1989/imagegrains/blob/main/notebooks/4_train_cellpose_model.ipynb">To train your own model check here</a>')
+        label_widget.setTextFormat(Qt.RichText)
+        label_widget.setTextInteractionFlags(Qt.TextBrowserInteraction)
+        label_widget.setOpenExternalLinks(True)
+        #label_widget.native.setStyleSheet("QLabel { color : blue; }")
+        self.model_download_group.glayout.addWidget(label_widget, 3, 0, 1, 3)
+
 
         ### Elements "Model selection" ###
         self.model_selection_group = VHGroup('Model selection', orientation='G')
