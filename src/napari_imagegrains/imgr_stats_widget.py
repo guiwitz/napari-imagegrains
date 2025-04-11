@@ -212,8 +212,8 @@ class ImageGrainStatsWidget(QWidget):
         self.btn_run_grainsize_on_image.clicked.connect(self._on_run_grainsize_on_image)
         self.check_scale.toggled.connect(self.spinbox_scale.setEnabled)
         self.btn_display_fit.clicked.connect(self._on_display_fit)
-        self.btn_plot_dataset.clicked.connect(self._on_plot_dataset)
-        self.btn_plot_single_image.clicked.connect(self._on_plot_single_image)
+        self.btn_plot_dataset.clicked.connect(self._on_plot_gsd_dataset)
+        self.btn_plot_single_image.clicked.connect(self._on_plot_gsd_image)
         self.combobox_prop_to_plot.changed.connect(self._on_select_prop_to_plot)
 
         self.btn_load_grainsize.clicked.connect(self._on_load_grainsize_dataset)
@@ -412,7 +412,7 @@ class ImageGrainStatsWidget(QWidget):
 
     def _on_select_prop_for_size(self, event=None):
 
-        self._on_plot_dataset()
+        self._on_plot_gsd_dataset()
 
     def _on_select_image(self, current_item, previous_item):
 
@@ -438,7 +438,6 @@ class ImageGrainStatsWidget(QWidget):
             self.open_mask()
 
             return self.image_path
-        
         
     def open_image(self):
 
@@ -520,7 +519,7 @@ class ImageGrainStatsWidget(QWidget):
                 self.viewer.layers['axis'].add_lines(np.array([[y1, x1],[y4, x4]]), edge_color='blue')
                 self.viewer.layers['axis'].add_lines(np.array([[y2, x2],[y3, x3]]), edge_color='red')
 
-    def _on_plot_dataset(self):
+    def _on_plot_gsd_dataset(self):
 
         column = self.combobox_props_for_size.value
         self.grain_files = self.get_grain_files()
@@ -540,7 +539,7 @@ class ImageGrainStatsWidget(QWidget):
         self.grainsize_axes.legend()
         self.grainsize_plot.canvas.figure.canvas.draw()
 
-    def _on_plot_single_image(self):
+    def _on_plot_gsd_image(self):
 
         column = self.combobox_props_for_size.value
         self.grain_files = self.get_grain_files()
