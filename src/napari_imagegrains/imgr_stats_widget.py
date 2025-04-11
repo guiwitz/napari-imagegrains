@@ -91,27 +91,6 @@ class ImageGrainStatsWidget(QWidget):
         self.mask_group.glayout.addWidget(self.qtext_model_str, 1, 1, 1, 1)
 
         self.mask_group.gbox.setMaximumHeight(self.mask_group.gbox.sizeHint().height())
-
-
-        '''### Elements "Mask selection"
-        self.mask_group = VHGroup('Mask selection', orientation='G')
-        self._properties_layout.addWidget(self.mask_group.gbox)
-
-        self.btn_select_mask_folder = QPushButton("Select mask folder")
-        self.btn_select_mask_folder.setToolTip("Select mask Folder")
-        self.mask_group.glayout.addWidget(self.btn_select_mask_folder, 0, 0, 1, 2)
-
-        ##### Elements "Mask list" #####
-        self.mask_list = FolderList(viewer)
-        self.mask_group.glayout.addWidget(self.mask_list, 1, 0, 1, 2)
-
-        self.qtext_mask_str = QLineEdit("_mask")
-        self.mask_group.glayout.addWidget(QLabel("Mask string"), 2, 0, 1,1)
-        self.mask_group.glayout.addWidget(self.qtext_mask_str, 2, 1, 1, 1)
-
-        self.qtext_model_str = QLineEdit("")
-        self.mask_group.glayout.addWidget(QLabel("Model string"), 3, 0, 1,1)
-        self.mask_group.glayout.addWidget(self.qtext_model_str, 3, 1, 1, 1)'''
         
         ### Elements "Analysis"
         self.analysis_group = VHGroup('Analysis', orientation='G')
@@ -201,6 +180,21 @@ class ImageGrainStatsWidget(QWidget):
         self.btn_plot_single_image.setToolTip("Plot for image")
         self.grainsize_plot_group.glayout.addWidget(self.btn_plot_single_image)
 
+        self.uncertainty_group = VHGroup('Uncertainty', orientation='G')
+        self._grainsize_layout.addWidget(self.uncertainty_group.gbox)
+        self.check_uncertainty = QCheckBox("Plot uncertainty")
+        self.check_uncertainty.setToolTip("Plot uncertainty")
+        self.check_uncertainty.setChecked(False)
+        self.uncertainty_group.glayout.addWidget(self.check_uncertainty, 0, 0, 1, 1)
+
+        self.combobox_uncertainty = create_widget(value = 'bootstrapping',
+                                                 options={'choices': ['bootstrapping', 'MC']},
+                                                widget_type='ComboBox')
+        self.combobox_uncertainty.hide()
+        #self.check_uncertainty.changed.connect(self.combobox_uncertainty.show)
+        self.uncertainty_group.glayout.addWidget(self.combobox_uncertainty.native, 0, 1, 1, 1)
+        
+
         self.add_connections()
 
     def add_connections(self):
@@ -215,6 +209,7 @@ class ImageGrainStatsWidget(QWidget):
         self.btn_plot_dataset.clicked.connect(self._on_plot_gsd_dataset)
         self.btn_plot_single_image.clicked.connect(self._on_plot_gsd_image)
         self.combobox_prop_to_plot.changed.connect(self._on_select_prop_to_plot)
+        self.check_uncertainty.toggled.connect(self.combobox_uncertainty.native.setVisible)
 
         self.btn_load_grainsize.clicked.connect(self._on_load_grainsize_dataset)
         self.btn_load_grainsize_image.clicked.connect(self._on_load_grainsize_image)
@@ -289,13 +284,6 @@ class ImageGrainStatsWidget(QWidget):
 
         self.mask_layer.properties = self.props_df_image
         self.create_table_widget(self.props_df_image)
-        
-        '''self.axes.clear()
-        sns.histplot(data=self.props_df_image, x='area', ax=self.axes)
-        self.axes.tick_params(axis='both', colors='white')
-        self.axes.xaxis.label.set_color('white')
-        self.axes.yaxis.label.set_color('white') 
-        self.mpl_widget.canvas.figure.canvas.draw()'''
 
     def _add_scaled_columns(self):
         
@@ -306,11 +294,6 @@ class ImageGrainStatsWidget(QWidget):
                     self.props_df_image[col.replace('px', 'mm')] = scale * self.props_df_image[col]
                 if self.props_df_dataset is not None:
                     self.props_df_dataset[col.replace('px', 'mm')] = scale * self.props_df_dataset[col]
-        '''else:
-            for col in self.props_df_image.columns:
-                if 'mm' in col:
-                    self.props_df_image[col.replace('mm', 'px')] = self.props_df_image[col] * scale
-                    self.props_df_image.rename(columns={col: col.replace('mm', 'px')}, inplace=True)'''
 
     def create_table_widget(self, dataframe):
         if self.results_table is None: 
@@ -342,7 +325,7 @@ class ImageGrainStatsWidget(QWidget):
         self.combobox_props_for_size.changed.connect(self._on_select_prop_to_plot)
 
     def get_grain_files(self):
-        """Find the appropraite grain file given: 1. mask and model string, 2. a folder
+        """Find the appropriate grain files given: 1. mask and model string, 2. a folder
         containing the grain files, 3. the information whether the grain files are scaled or not."""
 
         composite_name = self.qtext_model_str.text() + self.qtext_mask_str.text() + '_grains'
@@ -543,18 +526,10 @@ class ImageGrainStatsWidget(QWidget):
 
         column = self.combobox_props_for_size.value
         self.grain_files = self.get_grain_files()
+        self.grain_files = [x for x in self.grain_files if Path(self.image_name).stem in x]
         gsd_l, id_l = grainsizing.gsd_for_set(gsds=self.grain_files, column=column)
 
-        idx = find_matching_data_index(self.image_path, id_l)
-        if len(idx) == 0:
-            raise ValueError(f'No mask found for current image {self.image_path}')
-        elif len(idx) > 1:
-            raise ValueError(f'Multiple masks {idx} found for current image {self.image_path}')
-        else:
-            idx = idx[0]
-        #image_name = self.image_name.split('.')[0]
-        #mask_name = [x for x in id_l if image_name in x][0]
-        #idx = id_l.index(mask_name)
+        idx = 0
 
         self.grainsize_axes.clear()
         plotting.plot_gsd(gsd=gsd_l[idx], ax=self.grainsize_axes,
@@ -564,4 +539,23 @@ class ImageGrainStatsWidget(QWidget):
         self.grainsize_axes.tick_params(axis='both', colors='white')
         self.grainsize_axes.xaxis.label.set_color('white')
         self.grainsize_axes.yaxis.label.set_color('white')
+
+        if self.check_uncertainty.isChecked():
+            from imagegrains import gsd_uncertainty 
+            num_it = 1000
+            column_name = self.combobox_props_for_size.value
+
+            # Percentile uncertainty with bootstrapping (counting statistics only)
+            res_dict_bs = gsd_uncertainty.dataset_uncertainty(
+                gsds=self.grain_files,
+                num_it=num_it,
+                mute=True,
+                column_name=column_name,
+                return_results=True,
+                sep=',',
+                method = self.combobox_uncertainty.value,
+                tar_dir= self.mask_folder)
+            
+            plotting.plot_gsd_uncert(res_dict_bs['0'],color='k', ax=self.grainsize_axes)
+
         self.grainsize_plot.canvas.figure.canvas.draw()
