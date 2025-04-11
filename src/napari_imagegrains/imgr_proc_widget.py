@@ -41,6 +41,9 @@ class ImageGrainProcWidget(QWidget):
 
         self.image_path = None
 
+        # specifies whether current perf plot is for a dataset or a single image
+        self.performance_plot_type = None
+
         self.main_layout = QVBoxLayout()
         self.setLayout(self.main_layout)
 
@@ -198,15 +201,21 @@ class ImageGrainProcWidget(QWidget):
 
 
         ### Plotting
+        self.perf_plotting_group = VHGroup('Plotting', orientation='G')
+        self._options_tab_layout.addWidget(self.perf_plotting_group.gbox)
+
         self.mpl_widget = NapariMPLWidget(viewer)
         self.axes = self.mpl_widget.canvas.figure.subplots()
-        self._options_tab_layout.addWidget(self.mpl_widget.canvas)
+        self.perf_plotting_group.glayout.addWidget(self.mpl_widget.canvas, 0, 0, 1, 2)
         self.btn_compute_performance_single_image = QPushButton("Compute performance single image")
-        self._options_tab_layout.addWidget(self.btn_compute_performance_single_image)
+        self.perf_plotting_group.glayout.addWidget(self.btn_compute_performance_single_image, 1, 0, 1, 1)
         self.btn_compute_performance_folder = QPushButton("Compute performance folder")
-        self._options_tab_layout.addWidget(self.btn_compute_performance_folder)
+        self.perf_plotting_group.glayout.addWidget(self.btn_compute_performance_folder, 2, 0, 1, 1)
         self.btn_save_average_precision = QPushButton("Save average precision")
-        self._options_tab_layout.addWidget(self.btn_save_average_precision)
+        self.perf_plotting_group.glayout.addWidget(self.btn_save_average_precision, 1, 1, 1, 1)
+        self.btn_save_performance_plot = QPushButton("Save performance plot")
+        self.perf_plotting_group.glayout.addWidget(self.btn_save_performance_plot, 2, 1, 1, 1)
+        self.btn_save_performance_plot.setToolTip("Save performance plot")
         
         #### Options
         self.perf_options_group = VHGroup('Options', orientation='G')
@@ -242,6 +251,7 @@ class ImageGrainProcWidget(QWidget):
         self.btn_compute_performance_single_image.clicked.connect(self._on_click_compute_performance_single_image)
         self.btn_compute_performance_folder.clicked.connect(self._on_click_compute_performance_folder)
         self.btn_save_average_precision.clicked.connect(self._on_save_average_precision)
+        self.btn_save_performance_plot.clicked.connect(self._on_save_performance_plot)
         self.qls_expected_median_diameter.valueChanged.connect(self._on_slider_change)
         self.check_change_diameter.stateChanged.connect(self._on_check_toggle_visibility)
 
@@ -520,9 +530,9 @@ class ImageGrainProcWidget(QWidget):
         evals = eval_set(imgs=imgs, lbls=lbls, preds=preds, save_results=True, tar_dir=self.perf_pred_directory.value)
         self.mpl_widget.canvas.figure
         self.axes.clear()
-        plotting.AP_IoU_plot(evals,title='FH+', ax=self.axes, fontcolor='white')#,test_idxs=test_idxs1)
+        plotting.AP_IoU_plot(evals, title='', ax=self.axes, fontcolor='white')
         self.mpl_widget.canvas.figure.canvas.draw()
-
+        self.performance_plot_type = 'dataset'
 
     def _on_click_compute_performance_single_image(self):
         """
@@ -545,7 +555,7 @@ class ImageGrainProcWidget(QWidget):
         evals = eval_set(imgs=imgs, lbls=lbls, preds=preds, save_results=False)
         self.mpl_widget.canvas.figure
         self.axes.clear()
-        plotting.AP_IoU_plot(evals,title='Performance', ax=self.axes, fontcolor='white')#,test_idxs=test_idxs1)
+        plotting.AP_IoU_plot(evals,title='', ax=self.axes, fontcolor='white')#,test_idxs=test_idxs1)
         # fix plot after creation. Ideally a single image plot function should
         # be added to the imagegrains library
         for line in self.axes.lines:
@@ -556,6 +566,29 @@ class ImageGrainProcWidget(QWidget):
                 col.remove()
         self.axes.get_legend().remove()
         self.mpl_widget.canvas.figure.canvas.draw()
+        self.performance_plot_type = 'single'
+
+    def _on_save_performance_plot(self):
+        """
+        Save performance plot
+        """
+
+        # save the figure
+        self.plot_white_black(color='black')
+        export_name = ''
+        if self.performance_plot_type == 'single':
+            export_name = self.image_path.stem
+        elif self.performance_plot_type == 'dataset':
+            export_name = 'dataset'
+        self.mpl_widget.canvas.figure.savefig(self.perf_pred_directory.value / f'performance_plot_{export_name}.png', dpi=300, bbox_inches='tight')
+        self.plot_white_black(color='white')
+        self.mpl_widget.canvas.figure.canvas.draw()
+
+    def plot_white_black(self, color='white'):
+
+        self.axes.tick_params(axis='both', colors=color)
+        self.axes.xaxis.label.set_color(color)
+        self.axes.yaxis.label.set_color(color)
 
     def _on_save_average_precision(self):
 
@@ -575,7 +608,6 @@ class ImageGrainProcWidget(QWidget):
              'std_ll': std_ll})
         ap_stats_df.to_csv(self.perf_pred_directory.value /
                            'average_precision.csv', index=False)
-
     
 
     def _on_check_toggle_visibility(self):
