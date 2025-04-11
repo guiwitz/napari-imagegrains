@@ -155,7 +155,7 @@ class ImageGrainProcWidget(QWidget):
         self.segmentation_option_group.glayout.addWidget(self.check_change_diameter, 0, 2, 1, 1)
 
         self.qls_expected_median_diameter = QLabeledSlider(Qt.Horizontal)
-        self.qls_expected_median_diameter.setRange(7, 27)
+        self.qls_expected_median_diameter.setRange(7, 1000)
         self.qls_expected_median_diameter.setValue(17)
         self.qls_expected_median_diameter.setFixedWidth(200)
         self.qls_expected_median_diameter.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
