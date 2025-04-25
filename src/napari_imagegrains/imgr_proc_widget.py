@@ -11,7 +11,7 @@ from qtpy.QtWidgets import QVBoxLayout, QTabWidget, QPushButton, QWidget, QFileD
 from superqt import QLabeledSlider
 from qtpy.QtWidgets import QSizePolicy
 
-from imagegrains.segmentation_helper import eval_set
+from imagegrains.segmentation_helper import eval_set, keep_tif_crs, map_preds_to_imgs
 from imagegrains import data_loader, plotting
 
 from cellpose import models, io
@@ -102,7 +102,7 @@ class ImageGrainProcWidget(QWidget):
         self.model_selection_group.glayout.addWidget(self.btn_select_model_folder, 0, 0, 1, 2)
 
         ##### Elements "Model list" #####
-        self.model_list = FolderList(viewer)
+        self.model_list = FolderList(viewer, file_extensions=None)
         self.model_selection_group.glayout.addWidget(self.model_list, 1, 0, 1, 2)
 
 
@@ -114,7 +114,7 @@ class ImageGrainProcWidget(QWidget):
         self.image_group.glayout.addWidget(self.btn_select_image_folder)
 
         ##### Elements "Image list" #####
-        self.image_list = FolderList(viewer)
+        self.image_list = FolderList(viewer, file_extensions=['.png', '.jpg', '.jpeg', '.tif', '.tiff'])
         self.image_group.glayout.addWidget(self.image_list)
 
 
@@ -442,7 +442,7 @@ class ImageGrainProcWidget(QWidget):
                 MODEL_ID = Path(self.model_name).stem
 
         if self.radio_segment_jpgs.isChecked():
-            self.img_extension = ".jpg"
+            self.img_extension = ".jpg" or ".jpeg"
         if self.radio_segment_pngs.isChecked():
              self.img_extension = ".png"
         if self.radio_segment_tiffs.isChecked():
@@ -450,19 +450,30 @@ class ImageGrainProcWidget(QWidget):
 
         img_list = [x for x in os.listdir(path_images_in_folder) if x.endswith(self.img_extension)]
 
+        predictions = []
         for idx, img in enumerate(img_list):
-            self.mask_l, self.flow_l, self.styles_l, self.id_list, self.img_l = predict_single_image(
-                image_path=path_images_in_folder.joinpath(img), 
-                model=model,
-                mute=True, 
-                return_results=True,
-                save_masks=SAVE_MASKS,
-                tar_dir=TAR_DIR,
-                model_id=MODEL_ID,
-                diameter=self.expected_median_diameter)
-            self.viewer.open(path_images_in_folder.joinpath(img))
-            self.viewer.add_labels(self.mask_l, name=f"{Path(img).stem}_{MODEL_ID}_pred")
-            self.progress_bar.setValue(int((idx + 1) / len(img_list) * 100))
+            if ("mask" in img) or ("pred" in img) or ("flow" in img) or ("composite" in img):
+                self.notify_user("Caution !", "You have processed images (masks, or predictions or flows or composites) in your image folder!")
+                break
+            else:
+                self.mask_l, self.flow_l, self.styles_l, self.id_list, self.img_l = predict_single_image(
+                    image_path=path_images_in_folder.joinpath(img), 
+                    model=model,
+                    mute=True, 
+                    return_results=True,
+                    save_masks=SAVE_MASKS,
+                    tar_dir=TAR_DIR,
+                    model_id=MODEL_ID,
+                    diameter=self.expected_median_diameter)
+                self.viewer.open(path_images_in_folder.joinpath(img))
+                self.viewer.add_labels(self.mask_l, name=f"{Path(img).stem}_{MODEL_ID}_pred")
+                self.progress_bar.setValue(int((idx + 1) / len(img_list) * 100))
+
+                predictions.append(self.mask_l[0])
+        
+        preds = map_preds_to_imgs(predictions, img_list)
+
+        keep_tif_crs(img_list, preds)
 
         self.progress_bar.setValue(100)  # Ensure it's fully completed
 
