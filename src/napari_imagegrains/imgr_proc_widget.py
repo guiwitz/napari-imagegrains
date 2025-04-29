@@ -11,7 +11,7 @@ from qtpy.QtWidgets import QVBoxLayout, QTabWidget, QPushButton, QWidget, QFileD
 from superqt import QLabeledSlider
 from qtpy.QtWidgets import QSizePolicy
 
-from imagegrains.segmentation_helper import eval_set, keep_tif_crs, map_preds_to_imgs
+from imagegrains.segmentation_helper import eval_set #keep_tif_crs, map_preds_to_imgs
 from imagegrains import data_loader, plotting
 
 from cellpose import models, io
@@ -20,6 +20,7 @@ from napari_matplotlib.base import NapariMPLWidget
 from magicgui.widgets import create_widget
 import pandas as pd
 import numpy as np
+import shutil
 
 import warnings
 #warnings.filterwarnings("ignore")
@@ -173,6 +174,10 @@ class ImageGrainProcWidget(QWidget):
         self.expected_median_diameter = self.qls_expected_median_diameter.value()
         self.qls_expected_median_diameter.setVisible(False)
         self.segmentation_option_group.glayout.addWidget(self.qls_expected_median_diameter, 1, 2, 1, 1)
+
+        self.check_use_georef = QCheckBox('Use georeferencing (requires GDAL)')
+        self.check_use_georef .setChecked(False)
+        self.segmentation_option_group.glayout.addWidget(self.check_use_georef, 2, 2, 1, 1)
 
 
         ### Elements "Run segmentation" ###
@@ -442,16 +447,27 @@ class ImageGrainProcWidget(QWidget):
                 MODEL_ID = Path(self.model_name).stem
 
         if self.radio_segment_jpgs.isChecked():
-            self.img_extension = ".jpg" or ".jpeg"
+            self.img_extension = [".jpg",".jpeg"]
         if self.radio_segment_pngs.isChecked():
-             self.img_extension = ".png"
+             self.img_extension = [".png"]
         if self.radio_segment_tiffs.isChecked():
-             self.img_extension = ".tif"
+             self.img_extension = [".tif",".tiff"]
 
-        img_list = [x for x in os.listdir(path_images_in_folder) if x.endswith(self.img_extension)]
+        self.img_list = []
+        for image_in_folder in os.listdir(path_images_in_folder):
+            for img_ext in self.img_extension:
+                if image_in_folder.endswith(img_ext):
+                    self.img_list.append(image_in_folder)
 
-        predictions = []
-        for idx, img in enumerate(img_list):
+        if self.check_use_georef.isChecked():
+            try: 
+                from osgeo import gdal
+                gdal.UseExceptions()
+            except ModuleNotFoundError:
+                self.notify_user("Caution !", "GDAL not installed. Please install GDAL to keep CRS info for GeoTIFF files.")
+                pass
+
+        for idx, img in enumerate(self.img_list):
             if ("mask" in img) or ("pred" in img) or ("flow" in img) or ("composite" in img):
                 self.notify_user("Caution !", "You have processed images (masks, or predictions or flows or composites) in your image folder!")
                 break
@@ -467,13 +483,28 @@ class ImageGrainProcWidget(QWidget):
                     diameter=self.expected_median_diameter)
                 self.viewer.open(path_images_in_folder.joinpath(img))
                 self.viewer.add_labels(self.mask_l, name=f"{Path(img).stem}_{MODEL_ID}_pred")
-                self.progress_bar.setValue(int((idx + 1) / len(img_list) * 100))
+                self.progress_bar.setValue(int((idx + 1) / len(self.img_list) * 100))
 
-                predictions.append(self.mask_l[0])
-        
-        preds = map_preds_to_imgs(predictions, img_list)
-
-        keep_tif_crs(img_list, preds)
+                if self.check_use_georef.isChecked() and (".tif" in self.img_extension or ".tiff" in self.img_extension):
+                    try:
+                        self.src_tfw = path_images_in_folder.joinpath(f"{Path(img).stem}.tfw")
+                        self.tar_tfw = path_images_in_folder.joinpath(f"{Path(img).stem}_{MODEL_ID}_pred.tfw")
+                        shutil.copy(self.src_tfw, self.tar_tfw)
+                        self.img_georef_path = path_images_in_folder.joinpath(img)
+                        self.pred_georef_path = path_images_in_folder.joinpath(f"{Path(img).stem}_{MODEL_ID}_pred.tif")
+                        self.dataset_georef = gdal.Open(self.img_georef_path)
+                        projection   = self.dataset_georef.GetProjection()
+                        geotransform = self.dataset_georef.GetGeoTransform()
+                        #update metadata
+                        self.dataset_pred_georef = gdal.Open(self.pred_georef_path, gdal.GA_Update)    
+                        self.dataset_pred_georef.SetProjection(projection)
+                        self.dataset_pred_georef.SetGeoTransform(geotransform)             
+                        #close raster files
+                        self.dataset_georef = None
+                        self.dataset_pred_georef = None 
+                    except:
+                        self.notify_user("Caution !", "Georeference of tif/tiff files incomplete. Predictions might not be correctly referenced.")
+                        pass
 
         self.progress_bar.setValue(100)  # Ensure it's fully completed
 
