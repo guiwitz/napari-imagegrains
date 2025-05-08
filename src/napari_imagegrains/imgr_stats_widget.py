@@ -13,7 +13,8 @@ from napari_matplotlib.base import NapariMPLWidget
 
 from .imgr_proc_widget import VHGroup
 from .folder_list_widget import FolderList
-from .utils import find_match_in_folder, find_matching_data_index, read_complete_grain_files
+from .utils import (find_match_in_folder, find_matching_data_index,
+                    read_complete_grain_files)
 from imagegrains import grainsizing, data_loader, plotting
 from imagegrains.grainsizing import scale_grains
 

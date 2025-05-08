@@ -1,19 +1,17 @@
 import os
+from pathlib import Path
+
 import napari
 
 from typing import TYPE_CHECKING
 
-from qtpy.QtWidgets import QWidget, QVBoxLayout, QGroupBox, QHBoxLayout, QGridLayout, QLabel, QPushButton
+from qtpy.QtWidgets import (QWidget, QVBoxLayout, QGroupBox,
+                            QHBoxLayout, QGridLayout, QLabel, QPushButton)
 from magicgui.widgets import create_widget
-from pathlib import Path
-
-from .imgr_proc_widget import ImageGrainProcWidget
 
 from imagegrains import data_loader
 
-# if TYPE_CHECKING:
-#     import napari
-
+from .imgr_proc_widget import ImageGrainProcWidget
 
 class ImageGrainDemoWidget(QWidget):
     def __init__(self, viewer: "napari.viewer.Viewer"):

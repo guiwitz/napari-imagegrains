@@ -5,9 +5,13 @@ os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 from typing import TYPE_CHECKING
 from pathlib import Path
 import webbrowser
+import shutil
 
 from qtpy.QtCore import Qt
-from qtpy.QtWidgets import QVBoxLayout, QTabWidget, QPushButton, QWidget, QFileDialog,  QLineEdit, QGroupBox, QHBoxLayout, QGridLayout, QLabel, QCheckBox, QProgressBar, QRadioButton, QMessageBox
+from qtpy.QtWidgets import (QVBoxLayout, QTabWidget, QPushButton,
+                            QWidget, QFileDialog,  QLineEdit, QGroupBox,
+                            QHBoxLayout, QGridLayout, QLabel, QCheckBox,
+                            QProgressBar, QRadioButton, QMessageBox)
 from superqt import QLabeledSlider
 from qtpy.QtWidgets import QSizePolicy
 
@@ -20,11 +24,6 @@ from napari_matplotlib.base import NapariMPLWidget
 from magicgui.widgets import create_widget
 import pandas as pd
 import numpy as np
-import shutil
-
-import warnings
-#warnings.filterwarnings("ignore")
-
 import requests
 
 from .folder_list_widget import FolderList
