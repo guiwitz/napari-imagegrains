@@ -10,7 +10,7 @@ import re
 class FolderList(QListWidget):
     # be able to pass the Napari viewer name (viewer)
 
-    def __init__(self, viewer, parent=None, file_extensions=['.png', '.jpg', '.jpeg', '.tif', '.tiff']):
+    def __init__(self, viewer, parent=None, file_extensions=None):
         super().__init__(parent)
 
         self.viewer = viewer
@@ -57,8 +57,14 @@ class FolderList(QListWidget):
         files = os.listdir(self.folder_path)
         files = natsorted(files)
         for f in files:
-            if (f[0] != '.') and (self.folder_path.joinpath(f).is_file()) and ((Path(f).suffix in self.file_extensions) or (Path(f).suffix[1:].isdigit())):
-                self.addItem(f)
+            if (f[0] != '.') and (self.folder_path.joinpath(f).is_file()):
+                if Path(f).suffix[1:].isdigit():
+                    if self.file_extensions == None:
+                        self.addItem(f)
+                else:
+                    if self.file_extensions != None and Path(f).suffix in self.file_extensions:
+                        self.addItem(f)
+
     
     def addFileEvent(self):
         pass
