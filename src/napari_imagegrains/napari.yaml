@@ -6,12 +6,6 @@ visibility: public
 categories: ["Annotation", "Segmentation", "Acquisition"]
 contributions:
   commands:
-    - id: napari-imagegrains.get_reader
-      python_name: napari_imagegrains._reader:napari_get_reader
-      title: Open data with ImageGrains
-    - id: napari-imagegrains.make_sample_data
-      python_name: napari_imagegrains._sample_data:make_sample_data
-      title: Load sample data from ImageGrains
     - id: napari-imagegrains.make_proc_qwidget
       python_name: napari_imagegrains:ImageGrainProcWidget
       title: Make ImageGrain QWidget
@@ -21,14 +15,6 @@ contributions:
     - id: napari-imagegrains.make_demo_qwidget
       python_name: napari_imagegrains:ImageGrainDemoWidget
       title: Make ImageGrain Demo Widget
-  readers:
-    - command: napari-imagegrains.get_reader
-      accepts_directories: false
-      filename_patterns: ['*.npy']
-  sample_data:
-    - command: napari-imagegrains.make_sample_data
-      display_name: ImageGrains
-      key: unique_id.1
   widgets:
     - command: napari-imagegrains.make_proc_qwidget
       display_name: ImageGrainProc QWidget
