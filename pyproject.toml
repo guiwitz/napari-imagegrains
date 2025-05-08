@@ -5,8 +5,8 @@ description = "An interactive napari plugin for the ImageGrains software."
 readme = "README.md"
 license = {file = "LICENSE"}
 authors = [
-  {name = "Guillaume Witz"},
-  {email = "guillaume.witz@unibe.ch"},
+    {name = "Guillaume Witz", email = "guillaume.witz@unibe.ch"},
+    {name = "Michale Horn", email = "michael.horn@unibe.ch}"},
 ]
 classifiers = [
     "Development Status :: 2 - Pre-Alpha",
@@ -30,7 +30,6 @@ dependencies = [
     "qtpy",
     "scikit-image",
     "imagegrains",
-    "cellpose"
 ]
 
 [project.optional-dependencies]
