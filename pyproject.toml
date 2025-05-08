@@ -28,7 +28,11 @@ dependencies = [
     "numpy",
     "magicgui",
     "qtpy",
+    "superqt",
+    "napari_matplotlib",
     "scikit-image",
+    "seaborn",
+    "pandas",
     "imagegrains",
 ]
 
