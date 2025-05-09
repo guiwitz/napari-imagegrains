@@ -204,7 +204,7 @@ class ImageGrainProcWidget(QWidget):
 
         self.perf_pred_directory = create_widget(value=Path("No local path"), options={"mode": "d", "label": "Choose a directory"})
         self.perf_mask_directory = create_widget(value=Path("No local path"), options={"mode": "d", "label": "Choose a directory"})
-        self.perf_folder_group.glayout.addWidget(QLabel("Pick pred folder"), 0, 0, 1, 1)
+        self.perf_folder_group.glayout.addWidget(QLabel("Pick predictions folder"), 0, 0, 1, 1)
         self.perf_folder_group.glayout.addWidget(self.perf_pred_directory.native, 0, 1, 1, 1)
         self.perf_folder_group.glayout.addWidget(QLabel("Pick mask folder"), 1, 0, 1, 1)
         self.perf_folder_group.glayout.addWidget(self.perf_mask_directory.native, 1, 1, 1, 1)
