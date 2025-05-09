@@ -8,17 +8,17 @@ contributions:
   commands:
     - id: napari-imagegrains.make_proc_qwidget
       python_name: napari_imagegrains:ImageGrainProcWidget
-      title: Make ImageGrain QWidget
+      title: Make ImageGrain Processing Widget
     - id: napari-imagegrains.make_stats_qwidget
       python_name: napari_imagegrains:ImageGrainStatsWidget
-      title: Make ImageGrainStats QWidget
+      title: Make ImageGrain Stats Widget
     - id: napari-imagegrains.make_demo_qwidget
       python_name: napari_imagegrains:ImageGrainDemoWidget
       title: Make ImageGrain Demo Widget
   widgets:
     - command: napari-imagegrains.make_proc_qwidget
-      display_name: ImageGrainProc QWidget
+      display_name: ImageGrain Processing Widget
     - command: napari-imagegrains.make_stats_qwidget
-      display_name: ImageGrainStats QWidget
+      display_name: ImageGrain Stats Widget
     - command: napari-imagegrains.make_demo_qwidget
       display_name: ImageGrain Demo Widget
