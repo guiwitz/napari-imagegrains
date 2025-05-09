@@ -31,8 +31,9 @@ class ImageGrainStatsWidget(QWidget):
         super().__init__()
         
         self.viewer = viewer
-        #self.setLayout(QVBoxLayout())
-
+        
+        # name of current image
+        self.image_name = None
         # df for current image
         self.props_df_image = None
         # df for all images
@@ -83,10 +84,10 @@ class ImageGrainStatsWidget(QWidget):
         self.image_group.gbox.setMaximumHeight(self.image_group.gbox.sizeHint().height())
 
         #### mask options
-        self.mask_group = VHGroup('Mask selection', orientation='G')
+        self.mask_group = VHGroup('Prediction selection', orientation='G')
         self._properties_layout.addWidget(self.mask_group.gbox)
-        self.qtext_mask_str = QLineEdit("_mask")
-        self.mask_group.glayout.addWidget(QLabel("Mask string"), 0, 0, 1, 1)
+        self.qtext_mask_str = QLineEdit("_pred")
+        self.mask_group.glayout.addWidget(QLabel("Prediction string"), 0, 0, 1, 1)
         self.mask_group.glayout.addWidget(self.qtext_mask_str, 0, 1, 1, 1)
 
         self.qtext_model_str = QLineEdit("")
@@ -542,6 +543,10 @@ class ImageGrainStatsWidget(QWidget):
 
     def _on_plot_gsd_image(self):
 
+        if self.image_name is None:
+            self.notify_user("Image required", "No image selected. Please select an image first.")
+            return
+        
         column = self.combobox_props_for_size.value
         self.grain_files = self.get_grain_files()
         self.grain_files = [x for x in self.grain_files if Path(self.image_name).stem in x]
