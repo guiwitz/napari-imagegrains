@@ -7,3 +7,5 @@ parts:
   - caption: Tutorials
     chapters:
     - file: 1-Demo_widget
+    - file: 2-Processing_widget
+    - file: 3-Stats_widget
