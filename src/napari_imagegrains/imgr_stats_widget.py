@@ -72,8 +72,8 @@ class ImageGrainStatsWidget(QWidget):
         self.image_list.setMaximumHeight(100)
         self.image_group.glayout.addWidget(self.image_list, 1, 0, 1, 1)
 
-        self.btn_select_mask_folder = QPushButton("Select mask folder")
-        self.btn_select_mask_folder.setToolTip("Select mask Folder")
+        self.btn_select_mask_folder = QPushButton("Select predictions folder")
+        self.btn_select_mask_folder.setToolTip("Select predictions Folder")
         self.image_group.glayout.addWidget(self.btn_select_mask_folder, 0, 1, 1, 1)
 
         ##### Elements "Mask list" #####
@@ -192,7 +192,7 @@ class ImageGrainStatsWidget(QWidget):
         self.uncertainty_group.glayout.addWidget(self.check_uncertainty, 0, 0, 1, 1)
 
         self.combobox_uncertainty = create_widget(value = 'bootstrapping',
-                                                 options={'choices': ['bootstrapping', 'MC']},
+                                                 options={'choices': ['bootstrapping', 'Simple MC']},
                                                 widget_type='ComboBox')
         self.combobox_uncertainty.hide()
         #self.check_uncertainty.changed.connect(self.combobox_uncertainty.show)
