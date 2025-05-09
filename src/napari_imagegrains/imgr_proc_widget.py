@@ -271,12 +271,12 @@ class ImageGrainProcWidget(QWidget):
     def _on_click_goto_zenodo(self):
         """Opens a zenodo record"""
 
-        zenodo_url = "https://zenodo.org/records/15309324"
+        zenodo_url = "https://zenodo.org/records/8005771"
         webbrowser.open(zenodo_url)
 
 
     def _on_click_download_model(self):
-        """Downloads models from Github or Zenodo"""
+        """Downloads models from Github"""
 
         if self.repo_model_path_display.text() == "No URL":
             return False
@@ -293,42 +293,37 @@ class ImageGrainProcWidget(QWidget):
             assert type(content_in_bytes) is bytes
             with open(str(Path(self.model_save_path).joinpath(self.model_name)), 'wb') as f_out:
                 f_out.write(content_in_bytes)
-       
+
+        # preliminary download code for zenodo models
+        # must be tested with David's models on zenodo
+        # downloads all files with a certain extension         
         elif "zenodo.org" in self.model_url_user:
             self.model_save_path = self.local_directory_model_path_display.value
-            self.model_url_processed = self.model_url_user
-            self.model_name = (self.model_url_processed.split("/")[-1].split("?")[0])
-            self.model_save_path = self.local_directory_model_path_display.value
-            content_in_bytes = requests.get(str(self.model_url_processed)).content
-            assert type(content_in_bytes) is bytes
-            with open(str(Path(self.model_save_path).joinpath(self.model_name)), 'wb') as f_out:
-                f_out.write(content_in_bytes)
-            
-            # if several models should be downloaded from zenodo at a time:
-            # self.model_file_extension = ".260325"
-            # try:
-            #     response = requests.get(self.model_url_processed)
-            #     response.raise_for_status()
-            # except requests.exceptions.RequestException as e:
-            #     print(f"{e}")
+            self.model_url_processed = self.model_url_user.replace("zenodo.org/records", "zenodo.org/api/records/")
+            self.model_file_extension = ".lsm"
+            try:
+                response = requests.get(self.model_url_processed)
+                response.raise_for_status()
+            except requests.exceptions.RequestException as e:
+                print(f"{e}")
 
-            # data = response.json()
-            # files = data.get("files", [])
+            data = response.json()
+            files = data.get("files", [])
 
-            # for file in files:
-            #     self.model_name = file["key"]
-            #     self.model_actual_url = file["links"]["self"]
-            #     if self.model_file_extension is None or self.model_name.lower().endswith(self.model_file_extension.lower()):
-            #         try:
-            #             r = requests.get(self.model_actual_url, stream=True)
-            #             r.raise_for_status()
+            for file in files:
+                self.model_name = file["key"]
+                self.model_actual_url = file["links"]["self"]
+                if self.model_file_extension is None or self.model_name.lower().endswith(self.model_file_extension.lower()):
+                    try:
+                        r = requests.get(self.model_actual_url, stream=True)
+                        r.raise_for_status()
 
-            #             file_path = os.path.join(self.model_save_path, self.model_name)
-            #             with open(file_path, "wb") as f:
-            #                 for chunk in r.iter_content(chunk_size=8192): # file is downloaded in chunks of 8192 bytes (8kb)
-            #                     f.write(chunk)
-            #         except requests.exceptions.RequestException as e:
-            #             print(f"{e}")
+                        file_path = os.path.join(self.model_save_path, self.model_name)
+                        with open(file_path, "wb") as f:
+                            for chunk in r.iter_content(chunk_size=8192): # file is downloaded in chunks of 8192 bytes (8kb)
+                                f.write(chunk)
+                    except requests.exceptions.RequestException as e:
+                        print(f"{e}")
         else:
             self.notify_user("Message", "So far, model to be downloaded needs to be on Zenodo or on Github.")
 
