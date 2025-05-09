@@ -65,7 +65,7 @@ class ImageGrainStatsWidget(QWidget):
         self.image_group.glayout.addWidget(self.btn_select_image_folder, 0, 0, 1, 1)
 
         ##### Elements "Image list" #####
-        self.image_list = FolderList(viewer)
+        self.image_list = FolderList(viewer, file_extensions=['.png', '.jpg', '.jpeg', '.tif', '.tiff'])
         self.image_list.setMaximumHeight(100)
         self.image_group.glayout.addWidget(self.image_list, 1, 0, 1, 1)
 
@@ -74,7 +74,7 @@ class ImageGrainStatsWidget(QWidget):
         self.image_group.glayout.addWidget(self.btn_select_mask_folder, 0, 1, 1, 1)
 
         ##### Elements "Mask list" #####
-        self.mask_list = FolderList(viewer)
+        self.mask_list = FolderList(viewer, file_extensions=['.tif', '.tiff'])
         self.mask_list.setMaximumHeight(100)
         self.image_group.glayout.addWidget(self.mask_list, 1, 1, 1, 1)
 
