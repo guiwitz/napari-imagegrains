@@ -1,7 +1,6 @@
 import os
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
-
 from typing import TYPE_CHECKING
 from pathlib import Path
 import webbrowser
@@ -14,6 +13,7 @@ from qtpy.QtWidgets import (QVBoxLayout, QTabWidget, QPushButton,
                             QProgressBar, QRadioButton, QMessageBox)
 from superqt import QLabeledSlider
 from qtpy.QtWidgets import QSizePolicy
+from magicgui.widgets import create_widget
 
 from imagegrains.segmentation_helper import eval_set #keep_tif_crs, map_preds_to_imgs
 from imagegrains import data_loader, plotting
@@ -21,7 +21,6 @@ from imagegrains import data_loader, plotting
 from cellpose import models, io
 from napari_matplotlib.base import NapariMPLWidget
 
-from magicgui.widgets import create_widget
 import pandas as pd
 import numpy as np
 import requests
