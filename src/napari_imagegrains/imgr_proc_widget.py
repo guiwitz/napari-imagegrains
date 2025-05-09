@@ -275,7 +275,7 @@ class ImageGrainProcWidget(QWidget):
 
 
     def _on_click_download_model(self):
-        """Downloads models from Github"""
+        """Downloads models from Github or Zenodo"""
 
         if self.repo_model_path_display.text() == "No URL":
             return False
