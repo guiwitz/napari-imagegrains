@@ -6,4 +6,4 @@ parts:
     - file: Installation
   - caption: Tutorials
     chapters:
-    - file: Demo_widget
+    - file: 1-Demo_widget
