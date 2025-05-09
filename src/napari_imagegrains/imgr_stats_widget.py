@@ -1,14 +1,16 @@
 from typing import TYPE_CHECKING
 from pathlib import Path
-import matplotlib.pyplot as plt
+from warnings import warn
 
 from magicgui.widgets import create_widget, Table
 
 from qtpy.QtWidgets import (QPushButton, QWidget, QVBoxLayout, QTabWidget,
-                            QLabel, QFileDialog, QLineEdit, QDoubleSpinBox, QCheckBox)
+                            QLabel, QFileDialog, QLineEdit, QDoubleSpinBox,
+                            QCheckBox, QMessageBox)
 import pandas as pd
 import seaborn as sns
 import numpy as np
+import matplotlib.pyplot as plt
 from napari_matplotlib.base import NapariMPLWidget
 
 from .imgr_proc_widget import VHGroup
@@ -214,6 +216,17 @@ class ImageGrainStatsWidget(QWidget):
 
         self.btn_load_grainsize.clicked.connect(self._on_load_grainsize_dataset)
         self.btn_load_grainsize_image.clicked.connect(self._on_load_grainsize_image)
+
+    def notify_user(self, message_title, message):
+        """
+        Generates a pop up message box an notifies the user with a message.
+        """
+        msg_box = QMessageBox()
+        msg_box.setIcon(QMessageBox.Warning)
+        msg_box.setWindowTitle(str(message_title))
+        msg_box.setText(str(message))
+        msg_box.setStandardButtons(QMessageBox.Ok)
+        msg_box.exec_()
 
     def _on_select_image_folder(self):
         """Interactively select folder to analyze"""
@@ -507,6 +520,10 @@ class ImageGrainStatsWidget(QWidget):
 
         column = self.combobox_props_for_size.value
         self.grain_files = self.get_grain_files()
+        if len(self.grain_files) == 0:
+            #warn(f'No grain files found for {self.mask_folder.name}. Please run the grain size analysis for the full folder first.')
+            self.notify_user("Analysis required", "No grain files found. Please run the grain size analysis for the full folder first in the Properties tab.")
+            return
         gsd_l, id_l = grainsizing.gsd_for_set(gsds=self.grain_files, column=column)
 
         self.grainsize_axes.clear()
