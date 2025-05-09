@@ -27,6 +27,7 @@ import requests
 
 from .folder_list_widget import FolderList
 from .access_single_image_widget import predict_single_image
+#from imagegrains.segmentation_helper import predict_single_image
 from .utils import find_match_in_folder, compute_average_ap
 
 if TYPE_CHECKING:
@@ -384,7 +385,11 @@ class ImageGrainProcWidget(QWidget):
                 img_id = Path(self.image_name).stem
                 MODEL_ID = Path(self.model_name).stem
 
-        self.mask_l, self.flow_l, self.styles_l, self.id_list, self.img_l = predict_single_image(image_path, model, mute=True, return_results=True, save_masks=SAVE_MASKS, tar_dir=TAR_DIR, model_id=MODEL_ID, diameter=self.expected_median_diameter)
+        self.mask_l, self.flow_l, self.styles_l = predict_single_image(
+            image_path=image_path, 
+            model=model, diameter=self.expected_median_diameter, mute=True,
+            return_results=True, save_masks=SAVE_MASKS,
+            tar_dir=TAR_DIR, model_id=MODEL_ID)
 
         self.viewer.add_labels(self.mask_l[0], name=f"{img_id}_{MODEL_ID}_pred")
         
@@ -423,7 +428,7 @@ class ImageGrainProcWidget(QWidget):
 
         try:
             model_path = self.model_path
-            model = models.CellposeModel(gpu=False, pretrained_model=str(model_path))
+            model = models.CellposeModel(gpu=self.check_use_gpu.isChecked(), pretrained_model=str(model_path))
         except:
             self.notify_user("Selection Required", "No model selected. Please select a model from the model list.")
 
@@ -470,7 +475,7 @@ class ImageGrainProcWidget(QWidget):
                 self.notify_user("Caution !", "You have processed images (masks, or predictions or flows or composites) in your image folder!")
                 break
             else:
-                self.mask_l, self.flow_l, self.styles_l, self.id_list, self.img_l = predict_single_image(
+                self.mask_l, self.flow_l, self.styles_l = predict_single_image(
                     image_path=path_images_in_folder.joinpath(img), 
                     model=model,
                     mute=True, 
