@@ -368,22 +368,17 @@ class ImageGrainProcWidget(QWidget):
             raise ValueError("No image selected")
         image_path = self.image_path
 
-        if self.pred_directory.value.as_posix() == "No local path":
-            SAVE_MASKS = False
-            TAR_DIR = ""
-            img_id = Path(self.image_name).stem
-            MODEL_ID = Path(self.model_name).stem
+        MODEL_ID = Path(self.model_name).stem
+        img_id = Path(self.image_name).stem
+        if self.check_save_mask.isChecked():
+            SAVE_MASKS = True
         else:
-            if not self.check_save_mask.isChecked():
-                SAVE_MASKS = False
-                TAR_DIR = ""
-                img_id = Path(self.image_name).stem
-                MODEL_ID = Path(self.model_name).stem
-            else:
-                SAVE_MASKS = True
-                TAR_DIR = self.pred_directory.value
-                img_id = Path(self.image_name).stem
-                MODEL_ID = Path(self.model_name).stem
+            SAVE_MASKS = False
+
+        if self.pred_directory.value.as_posix() == "No local path":
+            TAR_DIR = ""
+        else:
+            TAR_DIR = self.pred_directory.value
 
         self.mask_l, self.flow_l, self.styles_l = predict_single_image(
             image_path=image_path, 
@@ -435,19 +430,16 @@ class ImageGrainProcWidget(QWidget):
         # single image:
         path_images_in_folder = self.image_folder
 
-        if self.pred_directory.value.as_posix() == "No local path":
-            SAVE_MASKS = False
-            TAR_DIR = ""
-            MODEL_ID = Path(self.model_name).stem
+        if self.check_save_mask.isChecked():
+            SAVE_MASKS = True
         else:
-            if not self.check_save_mask.isChecked():
-                SAVE_MASKS = False
-                TAR_DIR = ""
-                MODEL_ID = Path(self.model_name).stem
-            else:
-                SAVE_MASKS = True
-                TAR_DIR = self.pred_directory.value
-                MODEL_ID = Path(self.model_name).stem
+            SAVE_MASKS = False
+        MODEL_ID = Path(self.model_name).stem
+
+        if self.pred_directory.value.as_posix() == "No local path":
+            TAR_DIR = ""    
+        else:
+            TAR_DIR = self.pred_directory.value
 
         if self.radio_segment_jpgs.isChecked():
             self.img_extension = [".jpg",".jpeg"]
