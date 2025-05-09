@@ -1,0 +1,5 @@
+title: napari-imagegrains
+author: Guillaume Witz, Michael Horn, David Mair
+#logo: logo.png
+execute:
+  execute_notebooks: 'off'
