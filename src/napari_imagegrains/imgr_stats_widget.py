@@ -264,7 +264,10 @@ class ImageGrainStatsWidget(QWidget):
         self.plot_type = 'multi'
         composite_name = self.qtext_model_str.text() + self.qtext_mask_str.text()
         self.props_df_dataset, self.props_dataset, self.file_ids = grainsizing.grains_in_dataset(
-            data_dir=self.mask_folder, mask_str=composite_name, return_results=True)
+            data_dir=self.mask_folder, 
+            mask_str=composite_name,
+            tar_dir=self.mask_folder,
+            return_results=True)
         
         if self.check_scale.isChecked():
             for ind in range(len(self.props_df_dataset)):
