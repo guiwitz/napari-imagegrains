@@ -26,8 +26,7 @@ import numpy as np
 import requests
 
 from .folder_list_widget import FolderList
-from .access_single_image_widget import predict_single_image
-#from imagegrains.segmentation_helper import predict_single_image
+from imagegrains.segmentation_helper import predict_single_image
 from .utils import find_match_in_folder, compute_average_ap
 
 if TYPE_CHECKING:
