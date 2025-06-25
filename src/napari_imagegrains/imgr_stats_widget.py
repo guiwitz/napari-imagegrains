@@ -114,10 +114,11 @@ class ImageGrainStatsWidget(QWidget):
         self.btn_load_grainsize = QPushButton("Load for folder")
         self.btn_load_grainsize.setToolTip("Load for folder")
         self.analysis_group.glayout.addWidget(self.btn_load_grainsize, 2, 0, 1, 1)
-        # load grain sizes for image
+        
+        '''# load grain sizes for image
         self.btn_load_grainsize_image = QPushButton("Load for image")
         self.btn_load_grainsize_image.setToolTip("Load for image")
-        self.analysis_group.glayout.addWidget(self.btn_load_grainsize_image, 3, 0, 1, 1)
+        self.analysis_group.glayout.addWidget(self.btn_load_grainsize_image, 3, 0, 1, 1)'''
 
         self.mpl_widget = NapariMPLWidget(viewer)
         self.axes = self.mpl_widget.canvas.figure.subplots()
@@ -218,7 +219,7 @@ class ImageGrainStatsWidget(QWidget):
         self.check_uncertainty.toggled.connect(self.combobox_uncertainty.native.setVisible)
 
         self.btn_load_grainsize.clicked.connect(self._on_load_grainsize_dataset)
-        self.btn_load_grainsize_image.clicked.connect(self._on_load_grainsize_image)
+        #self.btn_load_grainsize_image.clicked.connect(self._on_load_grainsize_image)
 
     def notify_user(self, message_title, message):
         """
