@@ -6,7 +6,7 @@ from magicgui.widgets import create_widget, Table
 
 from qtpy.QtWidgets import (QPushButton, QWidget, QVBoxLayout, QTabWidget,
                             QLabel, QFileDialog, QLineEdit, QDoubleSpinBox,
-                            QCheckBox, QMessageBox)
+                            QCheckBox, QMessageBox, QAbstractItemView)
 import pandas as pd
 import seaborn as sns
 import numpy as np
@@ -79,6 +79,8 @@ class ImageGrainStatsWidget(QWidget):
         ##### Elements "Mask list" #####
         self.mask_list = FolderList(viewer, file_extensions=['.tif', '.tiff'])
         self.mask_list.setMaximumHeight(100)
+        self.mask_list.setSelectionMode(QAbstractItemView.NoSelection)
+
         self.image_group.glayout.addWidget(self.mask_list, 1, 1, 1, 1)
 
         self.image_group.gbox.setMaximumHeight(self.image_group.gbox.sizeHint().height())
@@ -422,6 +424,7 @@ class ImageGrainStatsWidget(QWidget):
             return False
         else:
             self.results_table.clear()
+            self.axes.clear()
             if self.props_df_dataset is not None:
                 ref_files = self.props_df_dataset['file_id'].unique()
                 index = find_matching_data_index(self.image_path, ref_files)
