@@ -10,7 +10,7 @@ from qtpy.QtCore import Qt
 from qtpy.QtWidgets import (QVBoxLayout, QTabWidget, QPushButton,
                             QWidget, QFileDialog,  QLineEdit, QGroupBox,
                             QHBoxLayout, QGridLayout, QLabel, QCheckBox,
-                            QProgressBar, QRadioButton, QMessageBox)
+                            QProgressBar, QRadioButton, QMessageBox, QScrollArea)
 from superqt import QLabeledSlider
 from qtpy.QtWidgets import QSizePolicy
 from magicgui.widgets import create_widget
@@ -44,11 +44,16 @@ class ImageGrainProcWidget(QWidget):
         self.performance_plot_type = None
         self.mAP = None
 
-        self.main_layout = QVBoxLayout()
-        self.setLayout(self.main_layout)
+        # Main widget and layout
+        scroll = QScrollArea(self)
+        scroll.setWidgetResizable(True)
 
         self.tabs = QTabWidget()
-        self.main_layout.addWidget(self.tabs)
+        scroll.setWidget(self.tabs)
+
+        # Main layout of your widget
+        self.main_layout = QVBoxLayout(self)
+        self.main_layout.addWidget(scroll)
 
         # segmentation tab
         self.segmentation = QWidget()
