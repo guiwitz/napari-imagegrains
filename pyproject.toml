@@ -44,6 +44,8 @@ testing = [
     "pytest-qt",  # https://pytest-qt.readthedocs.io/en/latest/
     "napari",
     "pyqt5",
+    "nbformat",
+    "nbconvert",
 ]
 
 [project.entry-points."napari.manifest"]
