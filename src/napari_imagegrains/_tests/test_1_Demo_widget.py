@@ -1,6 +1,6 @@
 import pytest
 
-def _Demo_widget(make_napari_viewer):
+def test_1_Demo_widget(make_napari_viewer):
     #!/usr/bin/env python
     # coding: utf-8
 
