@@ -11,28 +11,13 @@ An interactive napari plugin for the [ImageGrains](https://github.com/dmair1989/
 
 ----------------------------------
 
-This [napari] plugin was generated with [copier] using the [napari-plugin-template].
-
-<!--
-Don't miss the full getting started guide to set up your new package:
-https://github.com/napari/napari-plugin-template#getting-started
-
-and review the napari docs for plugin developers:
-https://napari.org/stable/plugins/index.html
--->
-
 ## Installation
 
 We recommend to install the plugin in an isolated environment as provided by conda. For conda create an appropriate environment with (do not use Python more recent than 3.11):
 
     conda create -n napari-imagegrains -c conda-forge python=3.11 napari pyqt
     conda activate napari-imagegrains
-
-> :warning: 
-> This is a work in progress and the plugin is available neither on PyPi nor in the napari plugin manager.
->You can install `napari-imagegrains` via [pip]:
->
->    pip install napari-imagegrains
+    pip install napari-imagegrains
 
 
 To install latest development version :
