@@ -1,11 +1,9 @@
-import shutil
 import os
 from pathlib import Path
 from qtpy.QtWidgets import QListWidget
 from qtpy.QtCore import Qt
 from natsort import natsorted
-import re
-
+from imagegrains import __cp_version__
 
 class FolderList(QListWidget):
     # be able to pass the Napari viewer name (viewer)
@@ -20,8 +18,6 @@ class FolderList(QListWidget):
         self.folder_path = None
 
         self.file_extensions = file_extensions
-        # self.digit_extension = self.generate_digit_extension()
-        # self.file_extensions.append(".170223")
 
     def dragEnterEvent(self, event):
         if event.mimeData().hasUrls:
@@ -65,6 +61,28 @@ class FolderList(QListWidget):
                     if self.file_extensions != None and Path(f).suffix in self.file_extensions:
                         self.addItem(f)
 
+
+    def update_models_from_path(self, path):
+        #new function to allow model-weight files without extions and to filter models based on __cp_version__
+        self.clear()
+        self.folder_path = path
+        files = os.listdir(self.folder_path)
+        files = natsorted(files)
+        # filter loadable models based on cellpose version
+        if __cp_version__ >3:
+            for f in files:
+                if (f[0] != '.') and (self.folder_path.joinpath(f).is_file()):
+                    if not Path(f).suffix[1:]:
+                        self.addItem(f)    
+        else:
+            for f in files:
+                if (f[0] != '.') and (self.folder_path.joinpath(f).is_file()):
+                    if Path(f).suffix[1:].isdigit():
+                        if self.file_extensions == None:
+                            self.addItem(f)
+                    else:
+                        if self.file_extensions != None and Path(f).suffix in self.file_extensions:
+                            self.addItem(f)    
     
     def addFileEvent(self):
         pass
