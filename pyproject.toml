@@ -6,7 +6,7 @@ readme = "README.md"
 license = {file = "LICENSE"}
 authors = [
     {name = "Guillaume Witz", email = "guillaume.witz@unibe.ch"},
-    {name = "Michael Horn", email = "michael.horn@unibe.ch}"},
+    {name = "Michael Horn", email = "michael.horn@unibe.ch"},
 ]
 classifiers = [
     "Development Status :: 2 - Pre-Alpha",
@@ -27,6 +27,7 @@ dependencies = [
     "numpy <= 2.2",
     "magicgui",
     "qtpy",
+    "pyqt5",
     "superqt",
     "napari_matplotlib",
     "scikit-image",
