@@ -364,10 +364,10 @@ class ImageGrainProcWidget(QWidget):
         """Initializes the Cellpose model with more explicit exception handling"""
 
         if self.check_use_gpu.isChecked():
-            try:
-                if core._use_gpu_torch() == True:
-                    use_gpu = True
-                    if int(str(version).split(".")[0]) >3:
+            if int(str(version).split(".")[0]) >3:
+                try:
+                    if core._use_gpu_torch() == True:
+                        use_gpu = True
                         #avoid cuda OutOfMemoryError
                         try:
                             _, total = torch.cuda.mem_get_info(torch.device('cuda:0'))
@@ -377,12 +377,13 @@ class ImageGrainProcWidget(QWidget):
                                 self.notify_user("Not enough CUDA Memory","Not enough GPU RAM for running Cellpose-SAM. Switching to CPU - Processing will be very slow!")
                         except:
                             pass
-                else:
-                    self.notify_user("GPU Not Available","Neither TORCH CUDA nor MPS version installed/working.Switching to CPU - Processing will be very slow!")
-                    use_gpu = False
-            except:
-                pass
-            
+                    else:
+                        self.notify_user("GPU Not Available","Neither TORCH CUDA nor MPS version installed/working.Switching to CPU - Processing will be very slow!")
+                        use_gpu = False
+                except:
+                    pass
+            else:
+                use_gpu = True  
         else:
             use_gpu = False
         try:

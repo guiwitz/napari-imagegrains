@@ -5,8 +5,8 @@ from pathlib import Path
 #from natsort import natsorted
 #from skimage.measure import label, regionprops_table
 
-from cellpose import io
-from imagegrains import __cp_version__
+from cellpose import io, version
+#from imagegrains import __cp_version__
 
 def predict_single_image(image_path, model,channels=[0,0], diameter=None,
                          min_size=15, rescale=None, config=None, return_results=False,
@@ -37,12 +37,11 @@ def predict_single_image(image_path, model,channels=[0,0], diameter=None,
         image_path = [str(Path(image_path).as_posix())]
     else:
         image_path = [str(Path(x).as_posix()) for x in image_path]
-
+    if int(str(version).split(".")[0]) >3: #replace later with __cp_version__
+            channels = None
     try:
         img = [io.imread(str(x)) for x in image_path]
         img_id = [Path(x).stem for x in image_path]
-        if __cp_version__ > 3:
-            channels = None
         if config:
             try:
                 eval_str = ''
