@@ -17,9 +17,9 @@ from qtpy.QtWidgets import QSizePolicy
 from magicgui.widgets import create_widget
 
 from imagegrains.segmentation_helper import eval_set, predict_single_image #keep_tif_crs, map_preds_to_imgs
-from imagegrains import data_loader, plotting, __cp_version__
+from imagegrains import data_loader, plotting #after imagegrains v2: __cp_version__
 
-from cellpose import models, io, core
+from cellpose import models, io, core, version
 from napari_matplotlib.base import NapariMPLWidget
 
 import pandas as pd
@@ -367,7 +367,7 @@ class ImageGrainProcWidget(QWidget):
             try:
                 if core._use_gpu_torch() == True:
                     use_gpu = True
-                    if __cp_version__ >3:
+                    if int(str(version).split(".")[0]) >3:
                         #avoid cuda OutOfMemoryError
                         try:
                             _, total = torch.cuda.mem_get_info(torch.device('cuda:0'))

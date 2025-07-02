@@ -3,7 +3,8 @@ from pathlib import Path
 from qtpy.QtWidgets import QListWidget
 from qtpy.QtCore import Qt
 from natsort import natsorted
-from imagegrains import __cp_version__
+from cellpose import version
+# after imagegrains v2: from imagegrains import __cp_version__
 
 class FolderList(QListWidget):
     # be able to pass the Napari viewer name (viewer)
@@ -69,7 +70,7 @@ class FolderList(QListWidget):
         files = os.listdir(self.folder_path)
         files = natsorted(files)
         # filter loadable models based on cellpose version
-        if __cp_version__ >3:
+        if int(str(version).split(".")[0]) >3: #replace with: if __cp_version__ >3
             for f in files:
                 if (f[0] != '.') and (self.folder_path.joinpath(f).is_file()):
                     if not Path(f).suffix[1:]:
