@@ -32,7 +32,7 @@ dependencies = [
     "scikit-image",
     "seaborn",
     "pandas",
-    "imagegrains",
+    "imagegrains >= 1.2.0",
 ]
 
 [project.optional-dependencies]
