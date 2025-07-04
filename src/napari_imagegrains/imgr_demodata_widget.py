@@ -20,6 +20,9 @@ class ImageGrainDemoWidget(QWidget):
         self.viewer = viewer
         self.default_download_path = Path.home().joinpath("imagegrains")
 
+        # Mute dialog box notifications 
+        self.supress_notifications = False
+
         self.main_layout = QVBoxLayout()
         self.setLayout(self.main_layout)
 

@@ -51,6 +51,9 @@ class ImageGrainProcWidget(QWidget):
         self.tabs = QTabWidget()
         scroll.setWidget(self.tabs)
 
+        # Mute dialog box notifications 
+        self.supress_notifications = False
+
         # Main layout of your widget
         self.main_layout = QVBoxLayout(self)
         self.main_layout.addWidget(scroll)
@@ -374,11 +377,14 @@ class ImageGrainProcWidget(QWidget):
                             total = total/ 1024 ** 2
                             if total < 3000:
                                 use_gpu = False
-                                self.notify_user("Not enough CUDA Memory","Not enough GPU RAM for running Cellpose-SAM. Switching to CPU - Processing will be very slow!")
+                                if self.supress_notifications == False:
+                                    self.notify_user("Not enough CUDA Memory","Not enough GPU RAM for running Cellpose-SAM. Switching to CPU - Processing will be very slow!")
+                                    self.check_use_gpu.setChecked(False)
                         except:
                             pass
                     else:
-                        self.notify_user("GPU Not Available","Neither TORCH CUDA nor MPS version installed/working.Switching to CPU - Processing will be very slow!")
+                        if self.supress_notifications == False:
+                            self.notify_user("GPU Not Available","Neither TORCH CUDA nor MPS version installed/working.Switching to CPU - Processing will be very slow!")
                         use_gpu = False
                 except:
                     pass
@@ -403,7 +409,8 @@ class ImageGrainProcWidget(QWidget):
             return
 
         if use_gpu == False:
-            self.notify_user("No GPU","Running Segmentation on CPU - Processing will be very slow!")
+            if self.supress_notifications == False:
+                self.notify_user("No GPU","Running Segmentation on CPU - Processing will be very slow!")
         return model
 
     def _on_click_segment_single_image(self):
@@ -506,7 +513,8 @@ class ImageGrainProcWidget(QWidget):
                 from osgeo import gdal
                 gdal.UseExceptions()
             except ModuleNotFoundError:
-                self.notify_user("Caution !", "GDAL not installed. Please install GDAL to keep CRS info for GeoTIFF files.")
+                if self.supress_notifications == False:
+                    self.notify_user("Caution !", "GDAL not installed. Please install GDAL to keep CRS info for GeoTIFF files.")
                 pass
 
         for idx, img in enumerate(self.img_list):
@@ -545,7 +553,8 @@ class ImageGrainProcWidget(QWidget):
                         self.dataset_georef = None
                         self.dataset_pred_georef = None 
                     except:
-                        self.notify_user("Caution !", "Georeference of tif/tiff files incomplete. Predictions might not be correctly referenced.")
+                        if self.supress_notifications == False:
+                            self.notify_user("Caution !", "Georeference of tif/tiff files incomplete. Predictions might not be correctly referenced.")
                         pass
 
         self.progress_bar.setValue(100)  # Ensure it's fully completed
