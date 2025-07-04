@@ -43,7 +43,7 @@ def test_2_2_Processing_widget_performance_tab(make_napari_viewer):
 
     self = demo_widget.widget
     
-    self.supress_notifications.set_value(True)
+    self.supress_notifications=True
 
     """
     viewer = make_napari_viewer()

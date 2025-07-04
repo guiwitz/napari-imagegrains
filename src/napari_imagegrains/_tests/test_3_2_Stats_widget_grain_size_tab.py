@@ -43,7 +43,7 @@ def test_3_2_Stats_widget_grain_size_tab(make_napari_viewer):
     demo_widget._on_click_download_demodata()
 
     self = demo_widget.widget
-    self.supress_notifications.set_value(True)
+    self.supress_notifications = True
 
     """
     viewer = make_napari_viewer()

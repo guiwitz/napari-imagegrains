@@ -45,7 +45,7 @@ def test_3_1_Stats_widget_properties_tab(make_napari_viewer):
 
     self = demo_widget.widget
 
-    self.supress_notifications.set_value(True)
+    self.supress_notifications = True
 
     """
     viewer = make_napari_viewer()
