@@ -20,6 +20,9 @@ class ImageGrainDemoWidget(QWidget):
         self.viewer = viewer
         self.default_download_path = Path.home().joinpath("imagegrains")
 
+        # Mute dialog box notifications 
+        self.supress_notifications = False
+
         self.main_layout = QVBoxLayout()
         self.setLayout(self.main_layout)
 
@@ -45,7 +48,7 @@ class ImageGrainDemoWidget(QWidget):
     
 
     def _on_click_download_demodata(self):
-        """Downloads the demo data from Githhub"""
+        """Downloads the demo data from Github"""
 
         self.custom_download_path = self.demodata_directory.value
 
@@ -60,7 +63,7 @@ class ImageGrainDemoWidget(QWidget):
         viewer.window.add_dock_widget(self.widget)
 
         self.widget.model_folder = Path(self.custom_download_path).joinpath("models")
-        self.widget.model_list.update_from_path(self.widget.model_folder)
+        self.widget.model_list.update_models_from_path(self.widget.model_folder)
         self.widget.model_list.setCurrentRow(1)
 
 

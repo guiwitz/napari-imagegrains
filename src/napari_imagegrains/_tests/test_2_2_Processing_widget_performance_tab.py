@@ -42,6 +42,8 @@ def test_2_2_Processing_widget_performance_tab(make_napari_viewer):
     demo_widget._on_click_download_demodata()
 
     self = demo_widget.widget
+    
+    self.supress_notifications=True
 
     """
     viewer = make_napari_viewer()
