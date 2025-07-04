@@ -28,6 +28,7 @@ dependencies = [
     "magicgui",
     "qtpy",
     "superqt",
+    "pyqt5",
     "napari_matplotlib",
     "scikit-image",
     "seaborn",
@@ -42,7 +43,6 @@ testing = [
     "pytest-cov",  # https://pytest-cov.readthedocs.io/en/latest/
     "pytest-qt",  # https://pytest-qt.readthedocs.io/en/latest/
     "napari",
-    "pyqt5",
     "nbformat",
     "nbconvert",
 ]

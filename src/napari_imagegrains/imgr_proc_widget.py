@@ -409,7 +409,7 @@ class ImageGrainProcWidget(QWidget):
             return
 
         if use_gpu == False:
-            if self.supress_notifications == False:
+            if self.supress_notifications == False and int(str(version).split(".")[0]) >3:
                 self.notify_user("No GPU","Running Segmentation on CPU - Processing will be very slow!")
         return model
 
