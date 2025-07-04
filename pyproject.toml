@@ -27,12 +27,13 @@ dependencies = [
     "numpy <= 2.2",
     "magicgui",
     "qtpy",
+    "pyqt5",
     "superqt",
     "napari_matplotlib",
     "scikit-image",
     "seaborn",
     "pandas",
-    "imagegrains",
+    "imagegrains >= 1.2.0",
 ]
 
 [project.optional-dependencies]
