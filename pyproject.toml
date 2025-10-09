@@ -28,7 +28,6 @@ dependencies = [
     "magicgui",
     "qtpy",
     "superqt",
-    "pyqt5",
     "napari_matplotlib",
     "scikit-image",
     "seaborn",
