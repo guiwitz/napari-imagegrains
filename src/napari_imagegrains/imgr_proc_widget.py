@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 from pathlib import Path
 import webbrowser
 import shutil
+import torch
 
 from qtpy.QtCore import Qt
 from qtpy.QtWidgets import (QVBoxLayout, QTabWidget, QPushButton,
@@ -15,10 +16,10 @@ from superqt import QLabeledSlider
 from qtpy.QtWidgets import QSizePolicy
 from magicgui.widgets import create_widget
 
-from imagegrains.segmentation_helper import eval_set #keep_tif_crs, map_preds_to_imgs
-from imagegrains import data_loader, plotting
+from imagegrains.segmentation_helper import eval_set, predict_single_image #keep_tif_crs, map_preds_to_imgs
+from imagegrains import data_loader, plotting #after imagegrains v2: __cp_version__
 
-from cellpose import models, io
+from cellpose import models, io, core, version
 from napari_matplotlib.base import NapariMPLWidget
 
 import pandas as pd
@@ -26,7 +27,6 @@ import numpy as np
 import requests
 
 from .folder_list_widget import FolderList
-from imagegrains.segmentation_helper import predict_single_image
 from .utils import find_match_in_folder, compute_average_ap
 
 if TYPE_CHECKING:
@@ -50,6 +50,9 @@ class ImageGrainProcWidget(QWidget):
 
         self.tabs = QTabWidget()
         scroll.setWidget(self.tabs)
+
+        # Mute dialog box notifications 
+        self.supress_notifications = False
 
         # Main layout of your widget
         self.main_layout = QVBoxLayout(self)
@@ -275,7 +278,7 @@ class ImageGrainProcWidget(QWidget):
     def _on_click_goto_zenodo(self):
         """Opens a zenodo record"""
 
-        zenodo_url = "https://zenodo.org/records/15309324"
+        zenodo_url = "https://zenodo.org/records/15309323"
         webbrowser.open(zenodo_url)
 
 
@@ -348,10 +351,10 @@ class ImageGrainProcWidget(QWidget):
     
 
     def _on_click_select_model_folder(self):
-        """Interactively select folder to analyze"""
+        """Interactively select folder from models to load from"""
 
         self.model_folder = Path(str(QFileDialog.getExistingDirectory(self, "Select Directory")))
-        self.model_list.update_from_path(self.model_folder)
+        self.model_list.update_models_from_path(self.model_folder)
         self.reset_channels = True
     
 
@@ -360,22 +363,69 @@ class ImageGrainProcWidget(QWidget):
 
         self.expected_median_diameter = value
     
+    def initialize_model(self):
+        """Initializes the Cellpose model with more explicit exception handling"""
+
+        if self.check_use_gpu.isChecked():
+            if int(str(version).split(".")[0]) >3:
+                try:
+                    if core._use_gpu_torch() == True:
+                        use_gpu = True
+                        #avoid cuda OutOfMemoryError
+                        try:
+                            _, total = torch.cuda.mem_get_info(torch.device('cuda:0'))
+                            total = total/ 1024 ** 2
+                            if total < 3000:
+                                use_gpu = False
+                                if self.supress_notifications == False:
+                                    self.notify_user("Not enough CUDA Memory","Not enough GPU RAM for running Cellpose-SAM. Switching to CPU - Processing will be very slow!")
+                                    self.check_use_gpu.setChecked(False)
+                        except:
+                            pass
+                    else:
+                        if self.supress_notifications == False:
+                            self.notify_user("GPU Not Available","Neither TORCH CUDA nor MPS version installed/working.Switching to CPU - Processing will be very slow!")
+                        use_gpu = False
+                except:
+                    pass
+            else:
+                use_gpu = True  
+        else:
+            use_gpu = False
+        try:
+            model_path = self.model_path
+            model = models.CellposeModel(gpu=use_gpu, pretrained_model=str(model_path))
+        except AttributeError:
+            self.notify_user("Selection Required", "No model selected. Please select a model from the model list.")
+            return
+        except torch.cuda.OutOfMemoryError:
+            #GPU memory can still be blocked for a long time, which will crash napari at end of call
+            torch.cuda.empty_cache()
+            self.notify_user("OutOfMemoryError", "CUDA out of memory. Trying segmentation on CPU.")
+            self.check_use_gpu.setChecked(False)
+            return
+        except:
+            self.notify_user("Unexpected Error", "Could not load selected model. Try switching off the GPU option or re-installing the cellpose package.")
+            return
+
+        if use_gpu == False:
+            if self.supress_notifications == False and int(str(version).split(".")[0]) >3:
+                self.notify_user("No GPU","Running Segmentation on CPU - Processing will be very slow!")
+        return model
 
     def _on_click_segment_single_image(self):
         """
         Segments one individual selected image, independent of the image extension (.jpg, .png, .tif, ...).
         """
-
-        try:
-            model_path = self.model_path
-            model = models.CellposeModel(gpu=False, pretrained_model=str(model_path))
-        except:
-            self.notify_user("Selection Required", "No model selected. Please select a model from the model list.")
-
         # single image:
-        if self.image_path is None:
-            raise ValueError("No image selected")
+        try:
+            Path(self.image_path)
+        except TypeError:
+            self.notify_user("No Image Selected","Please select an image from the image list")
+            return
         image_path = self.image_path
+
+        model = self.initialize_model()
 
         MODEL_ID = Path(self.model_name).stem
         img_id = Path(self.image_name).stem
@@ -427,15 +477,10 @@ class ImageGrainProcWidget(QWidget):
         Segments all images with a selected extension (.jpg, .png, .tif) from a folder.
         Displays original images and their segmentation masks in the napari viewer.
         Masks can be saved in a selected folder.
-        GPU usage option not yet implemented.
         """
 
-        try:
-            model_path = self.model_path
-            model = models.CellposeModel(gpu=self.check_use_gpu.isChecked(), pretrained_model=str(model_path))
-        except:
-            self.notify_user("Selection Required", "No model selected. Please select a model from the model list.")
-
+        model = self.initialize_model()
+        
         # single image:
         path_images_in_folder = self.image_folder
 
@@ -468,7 +513,8 @@ class ImageGrainProcWidget(QWidget):
                 from osgeo import gdal
                 gdal.UseExceptions()
             except ModuleNotFoundError:
-                self.notify_user("Caution !", "GDAL not installed. Please install GDAL to keep CRS info for GeoTIFF files.")
+                if self.supress_notifications == False:
+                    self.notify_user("Caution !", "GDAL not installed. Please install GDAL to keep CRS info for GeoTIFF files.")
                 pass
 
         for idx, img in enumerate(self.img_list):
@@ -507,7 +553,8 @@ class ImageGrainProcWidget(QWidget):
                         self.dataset_georef = None
                         self.dataset_pred_georef = None 
                     except:
-                        self.notify_user("Caution !", "Georeference of tif/tiff files incomplete. Predictions might not be correctly referenced.")
+                        if self.supress_notifications == False:
+                            self.notify_user("Caution !", "Georeference of tif/tiff files incomplete. Predictions might not be correctly referenced.")
                         pass
 
         self.progress_bar.setValue(100)  # Ensure it's fully completed

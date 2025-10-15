@@ -6,7 +6,7 @@ readme = "README.md"
 license = {file = "LICENSE"}
 authors = [
     {name = "Guillaume Witz", email = "guillaume.witz@unibe.ch"},
-    {name = "Michael Horn", email = "michael.horn@unibe.ch}"},
+    {name = "Michael Horn", email = "michael.horn@unibe.ch"},
 ]
 classifiers = [
     "Development Status :: 2 - Pre-Alpha",
@@ -24,7 +24,7 @@ classifiers = [
 ]
 requires-python = ">=3.9"
 dependencies = [
-    "numpy",
+    "numpy <= 2.2",
     "magicgui",
     "qtpy",
     "superqt",
@@ -32,7 +32,7 @@ dependencies = [
     "scikit-image",
     "seaborn",
     "pandas",
-    "imagegrains",
+    "imagegrains >= 1.2.0",
 ]
 
 [project.optional-dependencies]
@@ -41,8 +41,8 @@ testing = [
     "pytest",  # https://docs.pytest.org/en/latest/contents.html
     "pytest-cov",  # https://pytest-cov.readthedocs.io/en/latest/
     "pytest-qt",  # https://pytest-qt.readthedocs.io/en/latest/
-    "napari",
     "pyqt5",
+    "napari",
     "nbformat",
     "nbconvert",
 ]

@@ -43,6 +43,9 @@ def test_2_1_Processing_widget_segmentation_tab(make_napari_viewer):
 
     self = demo_widget.widget
 
+    # Mute dialog box notifications 
+    self.supress_notifications = True
+
     """
     viewer = make_napari_viewer()
     self = ImageGrainProcWidget(viewer=viewer)
@@ -52,6 +55,7 @@ def test_2_1_Processing_widget_segmentation_tab(make_napari_viewer):
 
     # In[5]:
 
+    
 
     exports_folder = Path.home().joinpath("imagegrains/exports/")
     if not exports_folder.exists():
